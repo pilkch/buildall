@@ -34,13 +34,13 @@ public:
 class cProject
 {
 public:
-  static bool DependenciesCompare(const cProject* pLeft, const cProject* pRight);
+  static bool DependenciesCompare(const cProject& lhs, const cProject& rhs);
 
   string_t sName;
   string_t sURL;
   string_t sFolderName;
 
-  std::vector<cTarget*> targets;
+  std::vector<cTarget> targets;
 
 private:
   bool IsDependentOn(const cProject& rhs) const;
@@ -62,11 +62,9 @@ bool cProject::IsDependentOn(const cProject& rhs) const
 
 // *** Comparison for sorting particles based on depth
 
-inline bool cProject::DependenciesCompare(const cProject* pLeft, const cProject* pRight)
+inline bool cProject::DependenciesCompare(const cProject& lhs, const cProject& rhs)
 {
-  assert(pLeft != nullptr);
-  assert(pRight != nullptr);
-  return pLeft->IsDependentOn(*pRight);
+  return lhs.IsDependentOn(rhs);
 }
 
 class cBuildManager : public spitfire::cConsoleApplication
@@ -96,7 +94,7 @@ private:
 
   void Process(const cProject& project);
 
-  std::vector<cProject*> projects;
+  std::vector<cProject> projects;
 
   string_t sWorkingFolder;
 
@@ -160,8 +158,7 @@ void cBuildManager::Build(const cProject& project)
 
   const size_t n = project.targets.size();
   for (size_t i = 0; i < n; i++) {
-    const cTarget* pTarget = project.targets[i];
-    const cTarget& target = *pTarget;
+    const cTarget& target = project.targets[i];
 
     // Run cmake
     sCommand = TEXT("cmake ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName);
@@ -206,8 +203,7 @@ void cBuildManager::Test(const cProject& project)
 
   const size_t n = project.targets.size();
   for (size_t i = 0; i < n; i++) {
-    const cTarget* pTarget = project.targets[i];
-    const cTarget& target = *pTarget;
+    const cTarget& target = project.targets[i];
 
     // Run application
     sCommand = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName, target.sName);
@@ -252,15 +248,13 @@ void cBuildManager::ListAllProjects()
 
   const size_t n = projects.size();
   for (size_t i = 0; i < n; i++) {
-    const cProject* pProject = projects[i];
-    ASSERT(pProject != nullptr);
-    std::cout<<spitfire::string::ToUTF8(pProject->sName)<<std::endl;
+    const cProject& project = projects[i];
+    std::cout<<spitfire::string::ToUTF8(project.sName)<<std::endl;
 
-    const size_t nTargets = pProject->targets.size();
+    const size_t nTargets = project.targets.size();
     for (size_t j = 0; j < nTargets; j++) {
-      const cTarget* pTarget = pProject->targets[i];
-      ASSERT(pTarget != nullptr);
-      std::cout<<spitfire::string::ToUTF8(pTarget->sName)<<std::endl;
+      const cTarget& target = project.targets[i];
+      std::cout<<spitfire::string::ToUTF8(target.sName)<<std::endl;
     }
   }
 }
@@ -275,31 +269,19 @@ void cBuildManager::BuildAllProjects()
     return;
   }
 
-  std::list<cProject*> projectsSorted;
-
   // Create a list of our projects that is sorted by least dependencies to most dependencies
-  {
-    const size_t n = projects.size();
-    for (size_t i = 0; i < n; i++) {
-      projectsSorted.push_back(projects[i]);
-    }
-
-    // TODO: Actually call sort
-    //std::sort(projectsSorted.begin(), projectsSorted.end(), cProject::DependenciesCompare);
-  }
+  std::vector<cProject> projectsSorted = projects;
+  std::sort(projectsSorted.begin(), projectsSorted.end(), cProject::DependenciesCompare);
 
   spitfire::filesystem::cScopedTemporaryFolder temp;
 
   sWorkingFolder = temp.GetFolder();
 
-  std::list<cProject*>::const_iterator iter = projectsSorted.begin();
-  const std::list<cProject*>::const_iterator iterEnd = projectsSorted.end();
-  while (iter != iterEnd) {
-    const cProject& project = *(*iter);
+  const size_t n = projects.size();
+  for (size_t i = 0; i < n; i++) {
+    const cProject& project = projects[i];
     Process(project);
     if (bIsError) break;
-
-    iter++;
   };
 }
 
