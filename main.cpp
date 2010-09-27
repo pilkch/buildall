@@ -116,7 +116,7 @@ void cBuildManager::SetError(const string_t& _sErrorMessage)
 
 string_t cBuildManager::GetXMLFilePath() const
 {
-  return TEXT("~/.") + GetApplicationName() + TEXT("/build.xml");
+  return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("build.xml"));
 }
 
 void cBuildManager::LoadFromXMLFile()
