@@ -21,6 +21,7 @@
 
 #include <spitfire/storage/file.h>
 #include <spitfire/storage/filesystem.h>
+#include <spitfire/storage/xml.h>
 
 typedef spitfire::string_t string_t;
 typedef spitfire::ostringstream_t ostringstream_t;
@@ -29,6 +30,8 @@ class cTarget
 {
 public:
   string_t sName;
+  string_t sApplication;
+  string_t sFolder;
 };
 
 class cProject
@@ -40,6 +43,9 @@ public:
   string_t sURL;
   string_t sFolderName;
 
+  std::vector<string_t> dependenciesAsString;
+  void BuildDepencenciesGraph(std::vector<cProject>& allProjects); // Fill out dependencies from dependenciesAsString
+
   std::vector<cTarget> targets;
 
 private:
@@ -47,6 +53,28 @@ private:
 
   std::vector<cProject*> dependencies;
 };
+
+void cProject::BuildDepencenciesGraph(std::vector<cProject>& allProjects)
+{
+  const size_t n = dependenciesAsString.size();
+  for (size_t i = 0; i < n; i++) {
+    const string_t sNameToFind = dependenciesAsString[i];
+    bool bFound = false;
+
+    const size_t nProjects = allProjects.size();
+    for (size_t j = 0; j < nProjects; j++) {
+      if (sNameToFind == allProjects[j].sName) {
+        cProject* pProject = &(allProjects[j]);
+        dependencies.push_back(pProject);
+        bFound = true;
+      }
+    }
+
+    if (!bFound) {
+      std::cerr<<"Dependency \""<<spitfire::string::ToUTF8(sNameToFind)<<"\" not found for project \""<<spitfire::string::ToUTF8(sName)<<"\""<<std::endl;
+    }
+  }
+}
 
 bool cProject::IsDependentOn(const cProject& rhs) const
 {
@@ -89,6 +117,9 @@ private:
   void BuildAllProjects();
 
   void Clone(const cProject& project);
+  void Build(const cProject& project, const cTarget& target);
+  void Test(const cProject& project, const cTarget& target);
+
   void Build(const cProject& project);
   void Test(const cProject& project);
 
@@ -119,13 +150,163 @@ string_t cBuildManager::GetXMLFilePath() const
   return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("build.xml"));
 }
 
+/*
+<build>
+  <project name="Library" url="git://breathe.git.sourceforge.net/gitroot/breathe/breathe" folder="library">
+  </project>
+
+  <project name="Shared" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/shared" folder="shared">
+  </project>
+
+  <project name="OpenSkate" url="https://openskate.svn.sourceforge.net/svnroot/openskate/skate" folder="openskate">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="OpenSkate" application="skate" folder="project"/>
+  </project>
+
+  <project name="Crank" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/crank" folder="crank">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="Crank" application="crank" folder="project"/>
+  </project>
+
+  <project name="Tetris" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/tetris" folder="tetris">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="Tetris" application="tetris" folder="project"/>
+  </project>
+
+  <project name="Drive" url="https://drivecity.svn.sourceforge.net/svnroot/drivecity/drive" folder="drive">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="Drive" application="drive" folder="project"/>
+  </project>
+
+  <project name="Sudoku" url="git://sudokubang.git.sourceforge.net/gitroot/sudokubang/sudokubang" folder="sudoku">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="Sudoku" application="sudoku" folder="project"/>
+  </project>
+
+  <project name="FireStarter" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/firestarter" folder="firestarter">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="FireStarter" application="firestarter" folder="project"/>
+  </project>
+
+  <project name="Test" url="git://breathe.git.sourceforge.net/gitroot/breathe/test" folder="test">
+    <dependency name="Library"/>
+    <target name="Test FBO" application="openglmm_fbo" folder="openglmm_fbo"/>
+    <target name="Test Font" application="openglmm_font" folder="openglmm_font"/>
+    <target name="Test Permutations" application="test_permutations" folder="test_permutations"/>
+  </project>
+</build>
+*/
+
 void cBuildManager::LoadFromXMLFile()
 {
+  projects.clear();
+
   const string_t sXMLFilePath = GetXMLFilePath();
+  std::cout<<"cBuildManager::LoadFromXMLFile \""<<spitfire::string::ToUTF8(sXMLFilePath)<<"\""<<std::endl;
   if (!spitfire::filesystem::FileExists(sXMLFilePath)) {
     SetError(TEXT("XML File \"") + sXMLFilePath + TEXT("\" doesn't exist"));
     return;
   }
+
+  // Read the xml file
+  spitfire::xml::document document;
+
+  {
+    spitfire::xml::reader reader;
+
+    reader.ReadFromFile(document, sXMLFilePath);
+  }
+
+  // Parse the xml file
+  spitfire::xml::cNode::iterator iterProject(document);
+  if (!iterProject.IsValid()) {
+    SetError(TEXT("build.xml does not contain valid xml data"));
+    return;
+  }
+
+  iterProject.FindChild("build");
+  if (!iterProject.IsValid()) {
+    SetError(TEXT("build.xml does not contain a build root node"));
+    return;
+  }
+
+  iterProject.FindChild("project");
+  while (iterProject.IsValid()) {
+    cProject project;
+    if (!iterProject.GetAttribute("name", project.sName)) {
+      SetError(TEXT("build.xml contains a project without a name"));
+      return;
+    }
+
+    std::cout<<"project \""<<spitfire::string::ToUTF8(project.sName)<<"\""<<std::endl;
+
+    if (!iterProject.GetAttribute("url", project.sURL)) {
+      SetError(TEXT("build.xml contains a project without a url"));
+      return;
+    }
+
+    std::cout<<"url \""<<spitfire::string::ToUTF8(project.sURL)<<"\""<<std::endl;
+
+    if (!iterProject.GetAttribute("folder", project.sFolderName)) {
+      SetError(TEXT("build.xml contains a project without a folder"));
+      return;
+    }
+
+    std::cout<<"folder \""<<spitfire::string::ToUTF8(project.sFolderName)<<"\""<<std::endl;
+
+    for (spitfire::xml::cNode::iterator iter = iterProject.GetFirstChild(); iter.IsValid(); iter.Next()) {
+      const std::string sType = iter.GetName();
+
+      if (sType == "dependency") {
+        //<dependency name="Library"/>
+        std::cout<<"dependency"<<std::endl;
+        string_t sDependency;
+        if (!iter.GetAttribute("name", sDependency)) {
+          SetError(TEXT("build.xml contains a dependency without a name"));
+          return;
+        }
+
+        project.dependenciesAsString.push_back(sDependency);
+      } else if (sType == "target") {
+        //<target name="OpenSkate" application="skate" folder="project"/>
+        std::cout<<"target"<<std::endl;
+
+        cTarget target;
+
+        if (!iter.GetAttribute("name", target.sName)) {
+          SetError(TEXT("build.xml project contains a target without a name"));
+          return;
+        }
+
+        if (!iter.GetAttribute("application", target.sApplication)) {
+          SetError(TEXT("build.xml project contains a target without a application"));
+          return;
+        }
+
+        if (!iter.GetAttribute("folder", target.sFolder)) {
+          SetError(TEXT("build.xml project contains a target without a folder"));
+          return;
+        }
+
+        project.targets.push_back(target);
+      } else {
+        std::cerr<<"build.xml contains a project (\""<<spitfire::string::ToUTF8(project.sName)<<"\") with an unknown type \""<<spitfire::string::ToUTF8(sType)<<"\""<<std::endl;
+      }
+    }
+
+    projects.push_back(project);
+
+    iterProject.Next("project");
+  }
+
+  const size_t n = projects.size();
+  for (size_t i = 0; i < n; i++) projects[i].BuildDepencenciesGraph(projects);
 }
 
 void cBuildManager::Clone(const cProject& project)
@@ -134,10 +315,12 @@ void cBuildManager::Clone(const cProject& project)
   bool bIsGit = (sPossiblyGitProtocol == TEXT("git"));
 
   string_t sCommand;
-  if (bIsGit) sCommand = TEXT("git clone clone --depth 1");
+  if (bIsGit) sCommand = TEXT("git clone --depth 1");
   else sCommand = TEXT("svn co");
 
-  sCommand += TEXT(" ") + project.sURL + TEXT(" ") + sWorkingFolder + project.sFolderName;
+  sCommand += TEXT(" ") + project.sURL + TEXT(" ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName);
+
+  std::wcout<<TEXT("cBuildManager::Clone sCommand=\"")<<sCommand<<TEXT("\"")<<std::endl;
 
   int iReturnCode = -1;
   std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
@@ -152,76 +335,84 @@ void cBuildManager::Clone(const cProject& project)
   }
 }
 
-void cBuildManager::Build(const cProject& project)
+void cBuildManager::Build(const cProject& project, const cTarget& target)
 {
   string_t sCommand;
 
-  const size_t n = project.targets.size();
-  for (size_t i = 0; i < n; i++) {
-    const cTarget& target = project.targets[i];
+  // Run cmake
+  sCommand = TEXT("cmake ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder) + TEXT("/CMakeLists.txt");
 
-    // Run cmake
-    sCommand = TEXT("cmake ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName);
-
-    {
-      int iReturnCode = -1;
-      std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
-      if (iReturnCode != 0) {
-        ostringstream_t o;
-        o<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        SetError(o.str());
-      } else {
-        #ifdef BUILD_DEBUG
-        std::wcout<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        #endif
-      }
+  {
+    int iReturnCode = -1;
+    std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+    if (iReturnCode != 0) {
+      ostringstream_t o;
+      o<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      SetError(o.str());
+    } else {
+      #ifdef BUILD_DEBUG
+      std::wcout<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      #endif
     }
+  }
 
-    // Run cmake
-    sCommand = TEXT("make ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName);
+  // Run make
+  sCommand = TEXT("make ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
 
-    {
-      int iReturnCode = -1;
-      std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
-      if (iReturnCode != 0) {
-        ostringstream_t o;
-        o<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        SetError(o.str());
-      } else {
-        #ifdef BUILD_DEBUG
-        std::wcout<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        #endif
-      }
+  {
+    int iReturnCode = -1;
+    std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+    if (iReturnCode != 0) {
+      ostringstream_t o;
+      o<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      SetError(o.str());
+    } else {
+      #ifdef BUILD_DEBUG
+      std::wcout<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      #endif
     }
   }
 }
 
-void cBuildManager::Test(const cProject& project)
+void cBuildManager::Build(const cProject& project)
+{
+  const size_t n = project.targets.size();
+  for (size_t i = 0; i < n; i++) {
+    Build(project, project.targets[i]);
+    if (IsError()) return;
+  }
+}
+
+void cBuildManager::Test(const cProject& project, const cTarget& target)
 {
   /*
   string_t sCommand;
 
-  const size_t n = project.targets.size();
-  for (size_t i = 0; i < n; i++) {
-    const cTarget& target = project.targets[i];
+  // Run application
+  sCommand = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName, target.sName);
 
-    // Run application
-    sCommand = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName, target.sName);
-
-    {
-      int iReturnCode = -1;
-      std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
-      if (iReturnCode != 0) {
-        ostringstream_t o;
-        o<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        SetError(o.str());
-      } else {
-        #ifdef BUILD_DEBUG
-        std::wcout<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
-        #endif
-      }
+  {
+    int iReturnCode = -1;
+    std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+    if (iReturnCode != 0) {
+      ostringstream_t o;
+      o<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      SetError(o.str());
+    } else {
+      #ifdef BUILD_DEBUG
+      std::wcout<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      #endif
     }
   }*/
+}
+
+void cBuildManager::Test(const cProject& project)
+{
+  const size_t n = project.targets.size();
+  for (size_t i = 0; i < n; i++) {
+    Test(project, project.targets[i]);
+    if (IsError()) return;
+  }
 }
 
 void cBuildManager::Process(const cProject& project)
@@ -283,6 +474,8 @@ void cBuildManager::BuildAllProjects()
     Process(project);
     if (bIsError) break;
   };
+
+  assert(!IsError());
 }
 
 void cBuildManager::_PrintHelp() const
@@ -326,56 +519,6 @@ bool cBuildManager::_Run()
 
   return true;
 }
-
-/*
-
-<project name="Library">
-  <clone name="Library" url="git://breathe.git.sourceforge.net/gitroot/breathe/breathe" folder="library"/>
-</project>
-
-<project name="Shared">
-  <clone url="git://breathe.git.sourceforge.net/gitroot/breathe/breathe" folder="shared"/>
-</project>
-
-<project name="OpenSkate">
-   <dependency name="Library"/>
-   <dependency name="Shared"/>
-   <clone name="Skate" url="https://openskate.svn.sourceforge.net/svnroot/openskate" folder="openskate"/>
-   <target name="OpenSkate" application="skate" folder="project"/>
-</project>
-
-<project name="Test">
-   <dependency name="Library"/>
-   <clone name="Test" url="https://openskate.svn.sourceforge.net/svnroot/openskate" folder="test"/>
-   <target name="Test FBO" application="test_fbo" folder="test_fbo"/>
-   <target name="Test Font" application="test_font" folder="test_font"/>
-   <target name="Test Permutations" application="test_permutations" folder="test_permutations"/>
-</project>
-
-<project name="Crank">
-   <dependency name="Library"/>
-   <dependency name="Shared"/>
-   <clone name="Crank" url="https://openskate.svn.sourceforge.net/svnroot/openskate" folder="crank"/>
-   <target name="Crank" application="crank" folder="project"/>
-</project>
-
-<project name="Drive">
-   <dependency name="Library"/>
-   <dependency name="Shared"/>
-   <clone name="Drive" url="https://drivecity.svn.sourceforge.net/svnroot/drivecity/drive" folder="drive"/>
-   <target name="Drive" application="drive" folder="project"/>
-</project>
-
-<project name="Sudoku">
-   <dependency name="Library"/>
-   <dependency name="Shared"/>
-   <clone name="Sudoku" url="http://sudokubang.svn.sourceforge.net/svnroot/sudokubang/sudoku" folder="sudoku"/>
-   <target name="Sudoku" application="sudoku" folder="project"/>
-</project>
-
-
-*/
-
 
 
 /*
