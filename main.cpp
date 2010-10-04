@@ -196,9 +196,16 @@ string_t cBuildManager::GetXMLFilePath() const
 
   <project name="Test" url="git://breathe.git.sourceforge.net/gitroot/breathe/test" folder="test">
     <dependency name="Library"/>
-    <target name="Test FBO" application="openglmm_fbo" folder="openglmm_fbo"/>
-    <target name="Test Font" application="openglmm_font" folder="openglmm_font"/>
-    <target name="Test Permutations" application="test_permutations" folder="test_permutations"/>
+    <target name="Test libopengmm Fade In" application="openglmm_fadein" folder="openglmm_fadein"/>
+    <target name="Test libopengmm FBO" application="openglmm_fbo" folder="openglmm_fbo"/>
+    <target name="Test libopengmm Font" application="openglmm_font" folder="openglmm_font"/>
+    <target name="Test libopengmm Gears" application="openglmm_gears" folder="openglmm_gears"/>
+    <target name="Test libopengmm Geometry" application="openglmm_geometry" folder="openglmm_geometry"/>
+    <target name="Test libopengmm Heightmap" application="openglmm_heightmap" folder="openglmm_heightmap"/>
+    <target name="Test libopengmm Permutations" application="permutations" folder="permutations"/>
+    <target name="Test libopengmm Size" application="size_test" folder="size_test"/>
+    <target name="Source Cleaner" application="source_cleaner" folder="source_cleaner"/>
+    <target name="Test xdgmm" application="xdgmm" folder="xdgmm"/>
   </project>
 </build>
 */
@@ -385,11 +392,13 @@ void cBuildManager::Build(const cProject& project)
 
 void cBuildManager::Test(const cProject& project, const cTarget& target)
 {
-  /*
-  string_t sCommand;
+  const string_t sApplication = spitfire::filesystem::MakeFilePath(spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder), target.sApplication);
 
-  // Run application
-  sCommand = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sName, target.sName);
+  // Make sure that the application has been built sucessfully
+  assert(spitfire::filesystem::FileExists(sApplication));
+
+  // Run application with unittest parameter
+  const string_t sCommand = sApplication + TEXT(" --unittest");
 
   {
     int iReturnCode = -1;
@@ -403,7 +412,7 @@ void cBuildManager::Test(const cProject& project, const cTarget& target)
       std::wcout<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
     }
-  }*/
+  }
 }
 
 void cBuildManager::Test(const cProject& project)
@@ -423,7 +432,7 @@ void cBuildManager::Process(const cProject& project)
    Build(project);
    if (bIsError) return;
 
-   Test(project);
+   //Test(project);
    if (bIsError) return;
 }
 

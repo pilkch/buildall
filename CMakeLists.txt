@@ -88,7 +88,7 @@ ADD_EXECUTABLE(${PROJECT_NAME} main.cpp ${OUTPUT_LIBRARY_SOURCE_FILES} ${PROJECT
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREADED ON)
-FIND_PACKAGE(Boost 1.41.0 COMPONENTS date_time filesystem system signals thread)
+FIND_PACKAGE(Boost 1.41.0 COMPONENTS date_time filesystem system signals thread iostreams)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
@@ -103,6 +103,7 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 # Some of the libraries have different names than their Find*.cmake name
 SET(LIBRARIES_LINKED
   boost_filesystem
+  boost_iostreams
 )
 
 
