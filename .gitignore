@@ -8,5 +8,10 @@
 *.perspectivev3
 *.mode1v3
 Thumbs.db
-*
+
+CMakeCache.txt
+CMakeFiles
+Makefile
+buildall
+cmake_install.cmake
 
