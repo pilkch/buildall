@@ -221,17 +221,17 @@ void cBuildManager::LoadFromXMLFile()
     return;
   }
 
-  // Read the xml file
-  spitfire::xml::document document;
+  spitfire::document::cDocument document;
 
   {
+    // Read the xml file
     spitfire::xml::reader reader;
 
     reader.ReadFromFile(document, sXMLFilePath);
   }
 
   // Parse the xml file
-  spitfire::xml::cNode::iterator iterProject(document);
+  spitfire::document::cNode::iterator iterProject(document);
   if (!iterProject.IsValid()) {
     SetError(TEXT("build.xml does not contain valid xml data"));
     return;
@@ -267,7 +267,7 @@ void cBuildManager::LoadFromXMLFile()
 
     std::cout<<"folder \""<<spitfire::string::ToUTF8(project.sFolderName)<<"\""<<std::endl;
 
-    for (spitfire::xml::cNode::iterator iter = iterProject.GetFirstChild(); iter.IsValid(); iter.Next()) {
+    for (spitfire::document::cNode::iterator iter = iterProject.GetFirstChild(); iter.IsValid(); iter.Next()) {
       const std::string sType = iter.GetName();
 
       if (sType == "dependency") {

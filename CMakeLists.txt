@@ -51,7 +51,7 @@ ENDMACRO(PREFIX_PATHS)
 SET(LIBRARY_SPITFIRE_SOURCE_DIRECTORY spitfire/)
 SET(LIBRARY_SPITFIRE_SOURCE_FILES
 spitfire.cpp platform/pipe.cpp
-storage/file2.cpp storage/filesystem.cpp storage/xml.cpp
+storage/document.cpp storage/file2.cpp storage/filesystem.cpp storage/xml.cpp
 util/log.cpp util/cConsoleApplication.cpp util/cString.cpp util/unittest.cpp)
 
 IF(WIN32)
