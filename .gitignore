@@ -4,6 +4,7 @@
 ~$*
 *~
 .*.swp
+*.kdev*
 *.pbxuser
 *.perspectivev3
 *.mode1v3
@@ -14,4 +15,4 @@ CMakeFiles
 Makefile
 buildall
 cmake_install.cmake
-
+log
