@@ -26,6 +26,352 @@
 typedef spitfire::string_t string_t;
 typedef spitfire::ostringstream_t ostringstream_t;
 
+
+class cReportResult
+{
+public:
+  cReportResult();
+
+  const string_t& GetName() const { return sName; }
+  void SetName(const string_t& _sName) { sName = _sName; }
+
+  bool IsNotRun() const { return (state == STATE::NOT_RUN); }
+  bool IsPassed() const { return (state == STATE::PASSED); }
+  bool IsFailed() const { return (state == STATE::FAILED); }
+
+  void SetNotRun() { state = STATE::NOT_RUN; }
+  void SetPassed() { state = STATE::PASSED; }
+  void SetFailed() { state = STATE::FAILED; }
+
+private:
+  string_t sName;
+  enum class STATE {
+    NOT_RUN,
+    PASSED,
+    FAILED
+  };
+  STATE state;
+};
+
+cReportResult::cReportResult() :
+  state(STATE::NOT_RUN)
+{
+}
+
+
+class cReportTarget
+{
+public:
+  bool IsSuccess() const;
+
+  const string_t& GetName() const { return sName; }
+  void SetName(const string_t& _sName) { sName = _sName; }
+  const std::vector<cReportResult*>& GetResults() const { return results; }
+
+  void SetTestResultNotRun(const string_t& sTestName);
+  void SetTestResultPassed(const string_t& sTestName);
+  void SetTestResultFailed(const string_t& sTestName);
+
+private:
+  cReportResult* GetOrCreateTest(const string_t& sTestName);
+
+  string_t sName;
+  std::vector<cReportResult*> results;
+};
+
+cReportResult* cReportTarget::GetOrCreateTest(const string_t& sTestName)
+{
+  std::cout<<"cReportTarget::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
+  cReportResult* pResult = nullptr;
+
+  // Find the test if it has already been added
+  const size_t n = results.size();
+  for (size_t i = 0; i < n; i++) {
+    std::cout<<"cReportTarget::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
+    if (results[i]->GetName() == sTestName) {
+      std::cout<<"cReportTarget::GetOrCreateTest Found"<<std::endl;
+      pResult = results[i];
+      break;
+    }
+  }
+
+  // We didn't find the test so we need to create a new one
+  if (pResult == nullptr) {
+    std::cout<<"cReportTarget::GetOrCreateTest Not found, creating"<<std::endl;
+    pResult = new cReportResult;
+    pResult->SetName(sTestName);
+    pResult->SetNotRun();
+    results.push_back(pResult);
+  }
+
+  return pResult;
+}
+
+void cReportTarget::SetTestResultNotRun(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetNotRun();
+}
+
+void cReportTarget::SetTestResultPassed(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetPassed();
+}
+
+void cReportTarget::SetTestResultFailed(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetFailed();
+}
+
+
+
+
+class cReportProject
+{
+public:
+  explicit cReportProject(const string_t& sName);
+
+  bool IsSuccess() const;
+
+  // Project
+  const string_t& GetName() const { return sName; }
+  const std::vector<cReportResult*>& GetResults() const { return results; }
+  void SetTestResultNotRun(const string_t& sTestName);
+  void SetTestResultPassed(const string_t& sTestName);
+  void SetTestResultFailed(const string_t& sTestName);
+
+  // Target
+  const std::vector<cReportTarget*>& GetTargets() const { return targets; }
+  void SetTestResultNotRun(const string_t& sTarget, const string_t& sTestName);
+  void SetTestResultPassed(const string_t& sTarget, const string_t& sTestName);
+  void SetTestResultFailed(const string_t& sTarget, const string_t& sTestName);
+
+private:
+  cReportResult* GetOrCreateTest(const string_t& sTestName);
+
+  cReportTarget* GetOrCreateTarget(const string_t& sName);
+
+  string_t sName;
+  std::vector<cReportResult*> results;
+  std::vector<cReportTarget*> targets;
+};
+
+cReportProject::cReportProject(const string_t& _sName) :
+  sName(_sName)
+{
+}
+
+cReportResult* cReportProject::GetOrCreateTest(const string_t& sTestName)
+{
+  std::cout<<"cReportProject::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
+  cReportResult* pResult = nullptr;
+
+  // Find the test if it has already been added
+  const size_t n = results.size();
+  for (size_t i = 0; i < n; i++) {
+    std::cout<<"cReportProject::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
+    if (results[i]->GetName() == sTestName) {
+      std::cout<<"cReportProject::GetOrCreateTest Found"<<std::endl;
+      pResult = results[i];
+      break;
+    }
+  }
+
+  // We didn't find the test so we need to create a new one
+  if (pResult == nullptr) {
+    std::cout<<"cReportProject::GetOrCreateTest Not found, creating"<<std::endl;
+    pResult = new cReportResult;
+    pResult->SetName(sTestName);
+    pResult->SetNotRun();
+    results.push_back(pResult);
+  }
+
+  return pResult;
+}
+
+cReportTarget* cReportProject::GetOrCreateTarget(const string_t& sName)
+{
+  std::cout<<"cReportProject::GetOrCreateTarget \""<<spitfire::string::ToUTF8(sName)<<"\""<<std::endl;
+  cReportTarget* pTarget = nullptr;
+
+  // Find the test if it has already been added
+  const size_t n = targets.size();
+  for (size_t i = 0; i < n; i++) {
+    std::cout<<"cReportProject::GetOrCreateTarget "<<i<<" is "<<spitfire::string::ToUTF8(targets[i]->GetName())<<std::endl;
+    if (targets[i]->GetName() == sName) {
+      std::cout<<"cReportProject::GetOrCreateTarget Found"<<std::endl;
+      pTarget = targets[i];
+      break;
+    }
+  }
+
+  // We didn't find the test so we need to create a new one
+  if (pTarget == nullptr) {
+    std::cout<<"cReportProject::GetOrCreateTarget Not found, creating"<<std::endl;
+    pTarget = new cReportTarget;
+    pTarget->SetName(sName);
+    targets.push_back(pTarget);
+  }
+
+  return pTarget;
+}
+
+void cReportProject::SetTestResultNotRun(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetNotRun();
+}
+
+void cReportProject::SetTestResultPassed(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetPassed();
+}
+
+void cReportProject::SetTestResultFailed(const string_t& sTestName)
+{
+  cReportResult* pResult = GetOrCreateTest(sTestName);
+  assert(pResult != nullptr);
+  pResult->SetFailed();
+}
+
+void cReportProject::SetTestResultNotRun(const string_t& sTarget, const string_t& sTestName)
+{
+  cReportTarget* pTarget = GetOrCreateTarget(sTarget);
+  assert(pTarget != nullptr);
+  pTarget->SetTestResultNotRun(sTestName);
+}
+
+void cReportProject::SetTestResultPassed(const string_t& sTarget, const string_t& sTestName)
+{
+  cReportTarget* pTarget = GetOrCreateTarget(sTarget);
+  assert(pTarget != nullptr);
+  pTarget->SetTestResultPassed(sTestName);
+}
+
+void cReportProject::SetTestResultFailed(const string_t& sTarget, const string_t& sTestName)
+{
+  cReportTarget* pTarget = GetOrCreateTarget(sTarget);
+  assert(pTarget != nullptr);
+  pTarget->SetTestResultFailed(sTestName);
+}
+
+
+
+class cReport
+{
+public:
+  bool IsSuccess() const;
+
+  const std::vector<cReportProject*>& GetProjects() const { return projects; }
+  void AddProject(const string_t& sProjectName);
+
+  void AddTest(const string_t& sProjectName, const string_t& sTestName);
+  void SetTestResultNotRun(const string_t& sProjectName, const string_t& sTestName);
+  void SetTestResultPassed(const string_t& sProjectName, const string_t& sTestName);
+  void SetTestResultFailed(const string_t& sProjectName, const string_t& sTestName);
+
+  void AddTest(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName);
+  void SetTestResultNotRun(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName);
+  void SetTestResultPassed(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName);
+  void SetTestResultFailed(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName);
+
+private:
+  cReportProject* GetOrCreateProject(const string_t& sProjectName);
+
+  std::vector<cReportProject*> projects;
+};
+
+cReportProject* cReport::GetOrCreateProject(const string_t& sProjectName)
+{
+  cReportProject* pProject = nullptr;
+
+  const size_t n = projects.size();
+  for (size_t i = 0; i < n; i++) {
+    if (projects[i]->GetName() == sProjectName) {
+      pProject = projects[i];
+      break;
+    }
+  }
+
+  // If we still haven't found the project then we need to create one
+  if (pProject == nullptr) {
+    pProject = new cReportProject(sProjectName);
+    projects.push_back(pProject);
+  }
+
+  assert(pProject != nullptr);
+  return pProject;
+}
+
+void cReport::AddProject(const string_t& sProjectName)
+{
+  GetOrCreateProject(sProjectName);
+}
+
+void cReport::AddTest(const string_t& sProjectName, const string_t& sTestName)
+{
+  SetTestResultNotRun(sProjectName, sTestName);
+}
+
+void cReport::SetTestResultNotRun(const string_t& sProjectName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+
+  ASSERT(pProject != nullptr);
+  pProject->SetTestResultNotRun(sTestName);
+}
+
+void cReport::SetTestResultPassed(const string_t& sProjectName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+
+  ASSERT(pProject != nullptr);
+  pProject->SetTestResultPassed(sTestName);
+}
+
+void cReport::SetTestResultFailed(const string_t& sProjectName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+
+  ASSERT(pProject != nullptr);
+  pProject->SetTestResultFailed(sTestName);
+}
+
+void cReport::AddTest(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName)
+{
+  SetTestResultNotRun(sProjectName, sTargetName, sTestName);
+}
+
+void cReport::SetTestResultNotRun(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+  assert(pProject != nullptr);
+  pProject->SetTestResultNotRun(sTargetName, sTestName);
+}
+
+void cReport::SetTestResultPassed(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+  assert(pProject != nullptr);
+  pProject->SetTestResultPassed(sTargetName, sTestName);
+}
+
+void cReport::SetTestResultFailed(const string_t& sProjectName, const string_t& sTargetName, const string_t& sTestName)
+{
+  cReportProject* pProject = GetOrCreateProject(sProjectName);
+  assert(pProject != nullptr);
+  pProject->SetTestResultFailed(sTargetName, sTestName);
+}
+
+
 class cTarget
 {
 public:
@@ -95,35 +441,39 @@ inline bool cProject::DependenciesCompare(const cProject& lhs, const cProject& r
   return lhs.IsDependentOn(rhs);
 }
 
-class cBuildManager : public spitfire::cConsoleApplication
+class cBuildManager
 {
 public:
-  cBuildManager(int argc, const char* const* argv);
+  explicit cBuildManager(const string_t& sXMLFilePath);
 
   bool IsError() const { return bIsError; }
   string_t GetError() const { return sErrorMessage; }
 
-private:
-  virtual void _PrintHelp() const;
-  virtual string_t _GetVersion() const;
-  virtual bool _Run(); // NOTE: This may not be run at all, for example if "--help" is the first argument
+  void ListAllProjects(cReport& report);
+  void BuildAllProjects(cReport& report);
 
+private:
   void SetError(const string_t& sErrorMessage);
 
   string_t GetXMLFilePath() const;
 
   void LoadFromXMLFile();
-  void ListAllProjects();
-  void BuildAllProjects();
 
-  void Clone(const cProject& project);
-  void Build(const cProject& project, const cTarget& target);
-  void Test(const cProject& project, const cTarget& target);
+  // Targets
+  bool IsJavaTarget(const cProject& project, const cTarget& target) const;
+  void BuildJava(cReport& report, const cProject& project, const cTarget& target);
+  void BuildCPlusPlus(cReport& report, const cProject& project, const cTarget& target);
+  void TestJava(cReport& report, const cProject& project, const cTarget& target);
+  void TestCPlusPlus(cReport& report, const cProject& project, const cTarget& target);
+  void Build(cReport& report, const cProject& project, const cTarget& target);
+  void Test(cReport& report, const cProject& project, const cTarget& target);
 
-  void Build(const cProject& project);
-  void Test(const cProject& project);
+  // Projects
+  void Clone(cReport& report, const cProject& project);
+  void Build(cReport& report, const cProject& project);
+  void Test(cReport& report, const cProject& project);
 
-  void Process(const cProject& project);
+  string_t sXMLFilePath;
 
   std::vector<cProject> projects;
 
@@ -133,8 +483,8 @@ private:
   string_t sErrorMessage;
 };
 
-cBuildManager::cBuildManager(int argc, const char* const* argv) :
-  spitfire::cConsoleApplication(argc, argv),
+cBuildManager::cBuildManager(const string_t& _sXMLFilePath) :
+  sXMLFilePath(_sXMLFilePath),
   bIsError(false)
 {
 }
@@ -145,15 +495,48 @@ void cBuildManager::SetError(const string_t& _sErrorMessage)
   sErrorMessage = _sErrorMessage;
 }
 
-string_t cBuildManager::GetXMLFilePath() const
-{
-  return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("build.xml"));
-}
-
 /*
 <build>
-  <project name="Library" url="git://breathe.git.sourceforge.net/gitroot/breathe/breathe" folder="library">
+  <project name="PostCodes" url="git://github.com/pilkch/postcodes.git" folder="postcodes">
+    <target name="PostCodes" application="postcodes"/>
   </project>
+
+  <project name="Allocator" url="git://github.com/pilkch/allocator.git" folder="allocator">
+    <target name="Allocator" application="allocator"/>
+  </project>
+
+  <project name="Library" url="git://github.com/pilkch/library.git" folder="library">
+  </project>
+
+  <project name="Buildall" url="git://github.com/pilkch/buildall.git" folder="buildall">
+    <dependency name="Library"/>
+    <target name="Builall" application="buildall"/>
+  </project>
+
+  <project name="Tetris" url="git://github.com/pilkch/tetris.git" folder="tetris">
+    <dependency name="Library"/>
+    <dependency name="Shared"/>
+    <target name="Tetris" application="tetris" folder="project"/>
+  </project>
+
+  <project name="Test" url="git://github.com/pilkch/test.git" folder="test">
+    <dependency name="Library"/>
+    <target name="Test libopengmm Fade In" application="openglmm_fadein" folder="openglmm_fadein"/>
+    <target name="Test libopengmm FBO" application="openglmm_fbo" folder="openglmm_fbo"/>
+    <target name="Test libopengmm Font" application="openglmm_font" folder="openglmm_font"/>
+    <target name="Test libopengmm Gears" application="openglmm_gears" folder="openglmm_gears"/>
+    <target name="Test libopengmm Geometry" application="openglmm_geometry" folder="openglmm_geometry"/>
+    <target name="Test libopengmm Heightmap" application="openglmm_heightmap" folder="openglmm_heightmap"/>
+    <target name="Test Permutations" application="permutations" folder="permutations"/>
+    <target name="Test Size" application="size_test" folder="size_test"/>
+    <target name="Source Cleaner" application="source_cleaner" folder="source_cleaner"/>
+    <target name="Test xdgmm" application="xdgmm" folder="xdgmm"/>
+  </project>
+</build>
+*/
+
+/*
+// Not ready yet
 
   <project name="Shared" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/shared" folder="shared">
   </project>
@@ -168,12 +551,6 @@ string_t cBuildManager::GetXMLFilePath() const
     <dependency name="Library"/>
     <dependency name="Shared"/>
     <target name="Crank" application="crank" folder="project"/>
-  </project>
-
-  <project name="Tetris" url="https://firestartergame.svn.sourceforge.net/svnroot/firestartergame/tetris" folder="tetris">
-    <dependency name="Library"/>
-    <dependency name="Shared"/>
-    <target name="Tetris" application="tetris" folder="project"/>
   </project>
 
   <project name="Drive" url="https://drivecity.svn.sourceforge.net/svnroot/drivecity/drive" folder="drive">
@@ -193,28 +570,12 @@ string_t cBuildManager::GetXMLFilePath() const
     <dependency name="Shared"/>
     <target name="FireStarter" application="firestarter" folder="project"/>
   </project>
-
-  <project name="Test" url="git://breathe.git.sourceforge.net/gitroot/breathe/test" folder="test">
-    <dependency name="Library"/>
-    <target name="Test libopengmm Fade In" application="openglmm_fadein" folder="openglmm_fadein"/>
-    <target name="Test libopengmm FBO" application="openglmm_fbo" folder="openglmm_fbo"/>
-    <target name="Test libopengmm Font" application="openglmm_font" folder="openglmm_font"/>
-    <target name="Test libopengmm Gears" application="openglmm_gears" folder="openglmm_gears"/>
-    <target name="Test libopengmm Geometry" application="openglmm_geometry" folder="openglmm_geometry"/>
-    <target name="Test libopengmm Heightmap" application="openglmm_heightmap" folder="openglmm_heightmap"/>
-    <target name="Test libopengmm Permutations" application="permutations" folder="permutations"/>
-    <target name="Test libopengmm Size" application="size_test" folder="size_test"/>
-    <target name="Source Cleaner" application="source_cleaner" folder="source_cleaner"/>
-    <target name="Test xdgmm" application="xdgmm" folder="xdgmm"/>
-  </project>
-</build>
 */
 
 void cBuildManager::LoadFromXMLFile()
 {
   projects.clear();
 
-  const string_t sXMLFilePath = GetXMLFilePath();
   std::cout<<"cBuildManager::LoadFromXMLFile \""<<spitfire::string::ToUTF8(sXMLFilePath)<<"\""<<std::endl;
   if (!spitfire::filesystem::FileExists(sXMLFilePath)) {
     SetError(TEXT("XML File \"") + sXMLFilePath + TEXT("\" doesn't exist"));
@@ -296,10 +657,7 @@ void cBuildManager::LoadFromXMLFile()
           return;
         }
 
-        if (!iter.GetAttribute("folder", target.sFolder)) {
-          SetError(TEXT("build.xml project contains a target without a folder"));
-          return;
-        }
+        iter.GetAttribute("folder", target.sFolder);
 
         project.targets.push_back(target);
       } else {
@@ -316,7 +674,7 @@ void cBuildManager::LoadFromXMLFile()
   for (size_t i = 0; i < n; i++) projects[i].BuildDepencenciesGraph(projects);
 }
 
-void cBuildManager::Clone(const cProject& project)
+void cBuildManager::Clone(cReport& report, const cProject& project)
 {
   string_t sPossiblyGitProtocol = project.sURL.substr(0, 3);
   bool bIsGit = (sPossiblyGitProtocol == TEXT("git"));
@@ -335,62 +693,133 @@ void cBuildManager::Clone(const cProject& project)
     ostringstream_t o;
     o<<TEXT("cBuildManager::Clone Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
     SetError(o.str());
+    report.SetTestResultFailed(project.sName, TEXT("clone"));
   } else {
     #ifdef BUILD_DEBUG
     std::wcout<<TEXT("cBuildManager::Clone Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
     #endif
+    report.SetTestResultPassed(project.sName, TEXT("clone"));
   }
 }
 
-void cBuildManager::Build(const cProject& project, const cTarget& target)
+bool cBuildManager::IsJavaTarget(const cProject& project, const cTarget& target) const
 {
-  string_t sCommand;
+  const string_t sTargetFolder = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
 
-  // Run cmake
-  sCommand = TEXT("cmake ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder) + TEXT("/CMakeLists.txt");
+  // If there is a build.xml file within this directory then it is probably an Ant make file and we should treat it as a Java project
+  const string_t sBuildXML = spitfire::filesystem::MakeFilePath(sTargetFolder, TEXT("build.xml"));
+  return spitfire::filesystem::FileExists(sBuildXML);
+}
 
+void cBuildManager::BuildJava(cReport& report, const cProject& project, const cTarget& target)
+{
+  // Run ant build
   {
+    const string_t sCommand = TEXT("ant build");
+
     int iReturnCode = -1;
     std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
     if (iReturnCode != 0) {
       ostringstream_t o;
-      o<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      o<<TEXT("cBuildManager::BuildJava ant build process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       SetError(o.str());
+      report.SetTestResultFailed(project.sName, target.sName, TEXT("ant build"));
+      return;
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::Build cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      std::wcout<<TEXT("cBuildManager::BuildJava ant build process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
+      report.SetTestResultPassed(project.sName, target.sName, TEXT("ant build"));
+    }
+  }
+}
+
+void cBuildManager::BuildCPlusPlus(cReport& report, const cProject& project, const cTarget& target)
+{
+  // Run cmake
+  {
+    const string_t sCommand = TEXT("cmake .");
+
+    int iReturnCode = -1;
+    std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+    if (iReturnCode != 0) {
+      ostringstream_t o;
+      o<<TEXT("cBuildManager::BuildCPlusPlus cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      SetError(o.str());
+      report.SetTestResultFailed(project.sName, target.sName, TEXT("cmake"));
+      return;
+    } else {
+      #ifdef BUILD_DEBUG
+      std::wcout<<TEXT("cBuildManager::BuildCPlusPlus cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      #endif
+      report.SetTestResultPassed(project.sName, target.sName, TEXT("cmake"));
     }
   }
 
   // Run make
-  sCommand = TEXT("make ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
-
   {
+    const string_t sCommand = TEXT("make");
+
     int iReturnCode = -1;
     std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
     if (iReturnCode != 0) {
       ostringstream_t o;
-      o<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      o<<TEXT("cBuildManager::BuildCPlusPlus make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       SetError(o.str());
+      report.SetTestResultFailed(project.sName, target.sName, TEXT("make"));
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::Build make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      std::wcout<<TEXT("cBuildManager::BuildCPlusPlus make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
+      report.SetTestResultPassed(project.sName, target.sName, TEXT("make"));
     }
   }
 }
 
-void cBuildManager::Build(const cProject& project)
+void cBuildManager::Build(cReport& report, const cProject& project, const cTarget& target)
+{
+  const string_t sTargetFolder = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
+
+  // Change to the target directory so that cmake and make will work
+  spitfire::filesystem::cScopedDirectoryChange changeDirectory(sTargetFolder);
+
+  if (IsJavaTarget(project, target)) BuildJava(report, project, target);
+  else BuildCPlusPlus(report, project, target);
+}
+
+void cBuildManager::Build(cReport& report, const cProject& project)
 {
   const size_t n = project.targets.size();
   for (size_t i = 0; i < n; i++) {
-    Build(project, project.targets[i]);
-    if (IsError()) return;
+    Build(report, project, project.targets[i]);
   }
 }
 
-void cBuildManager::Test(const cProject& project, const cTarget& target)
+void cBuildManager::TestJava(cReport& report, const cProject& project, const cTarget& target)
+{
+  // TODO: Pass --unittest and actually test the built application
+  /*// Run ant Application
+  {
+    const string_t sCommand = TEXT("ant Application");
+
+    int iReturnCode = -1;
+    std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+    if (iReturnCode != 0) {
+      ostringstream_t o;
+      o<<TEXT("cBuildManager::TestJava ant Application process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      SetError(o.str());
+      report.SetTestResultFailed(project.sName, TEXT("ant Application"));
+      return;
+    } else {
+      #ifdef BUILD_DEBUG
+      std::wcout<<TEXT("cBuildManager::TestJava ant Application process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      #endif
+      report.SetTestResultPassed(project.sName, target.sName, TEXT("ant Application"));
+    }
+  }*/
+}
+
+void cBuildManager::TestCPlusPlus(cReport& report, const cProject& project, const cTarget& target)
 {
   const string_t sApplication = spitfire::filesystem::MakeFilePath(spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder), target.sApplication);
 
@@ -405,38 +834,34 @@ void cBuildManager::Test(const cProject& project, const cTarget& target)
     std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
     if (iReturnCode != 0) {
       ostringstream_t o;
-      o<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      o<<TEXT("cBuildManager::TestCPlusPlus Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       SetError(o.str());
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::Test Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      std::wcout<<TEXT("cBuildManager::TestCPlusPlus Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
     }
   }
 }
 
-void cBuildManager::Test(const cProject& project)
+void cBuildManager::Test(cReport& report, const cProject& project, const cTarget& target)
+{
+  const string_t sTargetFolder = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
+
+  if (IsJavaTarget(project, target)) TestJava(report, project, target);
+  else TestCPlusPlus(report, project, target);
+}
+
+void cBuildManager::Test(cReport& report, const cProject& project)
 {
   const size_t n = project.targets.size();
   for (size_t i = 0; i < n; i++) {
-    Test(project, project.targets[i]);
+    Test(report, project, project.targets[i]);
     if (IsError()) return;
   }
 }
 
-void cBuildManager::Process(const cProject& project)
-{
-   Clone(project);
-   if (bIsError) return;
-
-   Build(project);
-   if (bIsError) return;
-
-   //Test(project);
-   if (bIsError) return;
-}
-
-void cBuildManager::ListAllProjects()
+void cBuildManager::ListAllProjects(cReport& report)
 {
   LoadFromXMLFile();
   if (IsError()) return;
@@ -459,7 +884,7 @@ void cBuildManager::ListAllProjects()
   }
 }
 
-void cBuildManager::BuildAllProjects()
+void cBuildManager::BuildAllProjects(cReport& report)
 {
   LoadFromXMLFile();
   if (IsError()) return;
@@ -473,21 +898,80 @@ void cBuildManager::BuildAllProjects()
   std::vector<cProject> projectsSorted = projects;
   std::sort(projectsSorted.begin(), projectsSorted.end(), cProject::DependenciesCompare);
 
+  // Add an entry for each project to the report
+  const size_t nProjects = projects.size();
+  for (size_t i = 0; i < nProjects; i++) {
+    cProject& project = projects[i];
+    report.AddProject(project.sName);
+    report.AddTest(project.sName, TEXT("clone"));
+  }
+
   spitfire::filesystem::cScopedTemporaryFolder temp;
 
   sWorkingFolder = temp.GetFolder();
 
-  const size_t n = projects.size();
-  for (size_t i = 0; i < n; i++) {
+  // Pull all projects
+  std::wcout<<TEXT("Cloning Projects")<<std::endl;
+  for (size_t i = 0; i < nProjects; i++) {
     const cProject& project = projects[i];
-    Process(project);
-    if (bIsError) break;
-  };
+    Clone(report, project);
+  }
 
-  assert(!IsError());
+  // Add an entry for each project to the report
+  for (size_t i = 0; i < nProjects; i++) {
+    cProject& project = projects[i];
+
+    const size_t nTargets = project.targets.size();
+    for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
+      cTarget& target = project.targets[iTarget];
+      if (IsJavaTarget(project, target)) {
+        report.AddTest(project.sName, target.sName, TEXT("ant build"));
+      } else {
+        report.AddTest(project.sName, target.sName, TEXT("cmake"));
+        report.AddTest(project.sName, target.sName, TEXT("make"));
+      }
+    }
+  }
+
+  // If cloning was successful then we are ready to build and test our projects
+  if (!bIsError) {
+    std::wcout<<TEXT("Building and Testing Projects")<<std::endl;
+    // Compile and test all projects
+    for (size_t i = 0; i < nProjects; i++) {
+      const cProject& project = projects[i];
+      Build(report, project);
+      //Test(report, project);
+    };
+  }
 }
 
-void cBuildManager::_PrintHelp() const
+class cApplication : public spitfire::cConsoleApplication
+{
+public:
+  cApplication(int argc, const char* const* argv);
+
+private:
+  virtual void _PrintHelp() const;
+  virtual string_t _GetVersion() const;
+  virtual bool _Run(); // NOTE: This may not be run at all, for example if "--help" is the first argument
+
+  string_t GetXMLFilePath() const;
+
+  void ListAllProjects();
+  void BuildAllProjects();
+};
+
+cApplication::cApplication(int argc, const char* const* argv) :
+  spitfire::cConsoleApplication(argc, argv)
+{
+}
+
+string_t cApplication::GetXMLFilePath() const
+{
+  return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("build.xml"));
+}
+
+void cApplication::_PrintHelp() const
 {
   const string_t sXMLFilePath = GetXMLFilePath();
 
@@ -500,7 +984,7 @@ void cBuildManager::_PrintHelp() const
   std::cout<<"  -version, --version  output version information and exit"<<std::endl;
 }
 
-string_t cBuildManager::_GetVersion() const
+string_t cApplication::_GetVersion() const
 {
   ostringstream_t o;
   o<<GetApplicationName();
@@ -508,20 +992,118 @@ string_t cBuildManager::_GetVersion() const
   return o.str();
 }
 
-bool cBuildManager::_Run()
+void cApplication::ListAllProjects()
 {
+  cReport report;
+
+  {
+    cBuildManager manager(GetXMLFilePath());
+
+    manager.ListAllProjects(report);
+  }
+
+  // Print the list of projects
+  {
+    const std::vector<cReportProject*>& projects = report.GetProjects();
+    const size_t nProjects = projects.size();
+    for (size_t iProject = 0; iProject < nProjects; iProject++) {
+      std::cout<<spitfire::string::ToUTF8(projects[iProject]->GetName())<<std::endl;
+    }
+  }
+}
+
+void cApplication::BuildAllProjects()
+{
+  cReport report;
+
+  {
+    cBuildManager manager(GetXMLFilePath());
+
+    manager.BuildAllProjects(report);
+  }
+
+
+  // Create the xml tree for the report
+  {
+    spitfire::document::cDocument document;
+
+    spitfire::document::cNode* pDocumentNode = document.CreateElement("results");
+    document.AppendChild(pDocumentNode);
+
+    const std::vector<cReportProject*>& projects = report.GetProjects();
+    const size_t nProjects = projects.size();
+    for (size_t iProject = 0; iProject < nProjects; iProject++) {
+      const cReportProject& project = *projects[iProject];
+      spitfire::document::cNode* pProjectNode = document.CreateElement("project");
+      pDocumentNode->AppendChild(pProjectNode);
+      pProjectNode->SetAttribute("name", project.GetName());
+
+      // Project results
+      const std::vector<cReportResult*>& results = project.GetResults();
+      const size_t nResults = results.size();
+      for (size_t iResult = 0; iResult < nResults; iResult++) {
+        const cReportResult& result = *results[iResult];
+        spitfire::document::cNode* pResultNode = document.CreateElement("result");
+        pProjectNode->AppendChild(pResultNode);
+        assert(!result.GetName().empty());
+        pResultNode->SetAttribute("name", result.GetName());
+        if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
+        if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
+        else pResultNode->SetAttribute("status", TEXT("failed"));
+      }
+
+      // Target results
+      const std::vector<cReportTarget*>& targets = project.GetTargets();
+      const size_t nTargets = targets.size();
+      for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
+        const cReportTarget& target = *targets[iTarget];
+        spitfire::document::cNode* pTargetNode = document.CreateElement("target");
+        pProjectNode->AppendChild(pTargetNode);
+        pTargetNode->SetAttribute("name", target.GetName());
+        const std::vector<cReportResult*>& results = target.GetResults();
+        const size_t nResults = results.size();
+        for (size_t iResult = 0; iResult < nResults; iResult++) {
+          const cReportResult& result = *results[iResult];
+          spitfire::document::cNode* pResultNode = document.CreateElement("result");
+          pTargetNode->AppendChild(pResultNode);
+          assert(!result.GetName().empty());
+          pResultNode->SetAttribute("name", result.GetName());
+          if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
+          if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
+          else pResultNode->SetAttribute("status", TEXT("failed"));
+        }
+      }
+    }
+
+
+    // Write the xml file for debugging purposes
+    {
+      spitfire::xml::writer writer;
+
+      writer.WriteToFile(document, TEXT("/home/chris/results.xml"));
+    }
+
+    // Post xml file to http://chris.iluo.net/buildall
+    {
+      // TODO: Do post http request
+    }
+  }
+}
+
+bool cApplication::_Run()
+{
+  string_t sError;
+
   const size_t n = GetArgumentCount();
-  if (n != 1) {
-    SetError(TEXT("Invalid arguments"));
-  } else {
+  if (n != 1) sError = TEXT("Invalid number of arguments");
+  else {
     const string_t& sArgument = GetArgument(0);
     if ((sArgument == TEXT("-b")) || (sArgument == TEXT("-build")) || (sArgument == TEXT("--build"))) BuildAllProjects();
     else if ((sArgument == TEXT("-l")) || (sArgument == TEXT("-list")) || (sArgument == TEXT("--list"))) ListAllProjects();
-    else SetError(TEXT("Unknown argument"));
+    else sError = TEXT("Unknown argument \"") + sArgument + TEXT("\"");
   }
 
-  if (IsError()) {
-    string_t sError = GetError();
+  if (!sError.empty()) {
     std::cerr<<spitfire::string::ToUTF8(sError)<<std::endl;
     return false;
   }
@@ -529,317 +1111,14 @@ bool cBuildManager::_Run()
   return true;
 }
 
-
-/*
-
-
-class cReportProjectResult
-{
-public:
-  cReportProjectResult();
-
-  bool IsPass() const { return bIsPass; }
-  bool IsFail() const { return bIsFail; }
-
-  const string_t& GetName() const { return sName; }
-  const string_t& GetContent() const;
-
-private:
-  bool bIsPass;
-  string_t sName;
-  string_t sContent;
-};
-
-cReportProjectResult::cReportProjectResult() :
-  bIsPass(true)
-{
-}
-
-const string_t& cReportProjectResult::GetContent() const
-{
-  // Only failed results have content
-  ASSERT(IsFail());
-  return sContent;
-}
-
-class cReportProject
-{
-public:
-  explicit cReportProject(const string_t& sProjectName);
-
-  bool IsSuccess() const { return bIsSuccess; }
-
-  const string_t& GetName() const { return sProjectName; }
-  const std::vector<cReportProjectResult*>& GetResults() const { return results; }
-
-  void AddResult(const string_t& sTestName, bool bIsPass, const string_t& sContent = TEXT(""));
-
-private:
-  string_t sProjectName;
-  bool bIsSuccess;
-  std::vector<cReportProjectResult*> results;
-};
-
-cReportProject::cReportProject(const string_t& _sProjectName) :
-  sProjectName(_sProjectName),
-  bIsSuccess(true)
-{
-}
-
-void cReportProject::AddResult(const string_t& sTestName, bool bIsPass, const string_t& sContent)
-{
-  if (!bIsPass) bIsSuccess = false;
-
-  cReportProjectResult* pResult = new cReportProjectResult(sTestName, sContent, bIsPass);
-  results.push_back(pResult);
-}
-
-class cReport
-{
-public:
-  cReport();
-
-  bool IsSuccess() const { return bIsSuccess; }
-
-  const std::vector<cReportProject*>& GetProjects() const { return projects; }
-
-  void AddPass(const string_t& sProjectName, const string_t& sTestName);
-  void AddFail(const string_t& sProjectName, const string_t& sTestName, const string& sContent);
-
-private:
-  cReportProject* GetProject(const string_t& sProjectName);
-
-  bool bIsSuccess;
-  std::vector<cReportProject*> projects;
-};
-
-cReport::cReport() :
-  bIsSuccess(true)
-{
-}
-
-void cReport::GetProject(const string_t& sProjectName)
-{
-  cReportProject* pProject = nullptr;
-
-  const size_t n = projects.size();
-  for (size_t i = 0; i < n; i++) {
-    if (projects[i]->GetName() == sProjectName) {
-      pProject = projects[i];
-      break;
-    }
-  }
-
-  // If we still haven't found the project then we need to create one
-  if (pProject == nullptr) {
-    pProject = new cReportProject(sProjectName);
-    projects.push_back(pProject);
-  }
-
-  ASSERT(pProject != nullptr);
-  return pProject;
-}
-
-void cReport::AddPass(const string_t& sProjectName, const string_t& sTestName)
-{
-  cReportProject* pProject = GetProject(sProjectName);
-
-  ASSERT(pProject != nullptr);
-  pProject->AddResult(sTestName, true);
-}
-
-void cReport::AddFail(const string_t& sProjectName, const string_t& sTestName, const string& sContent)
-{
-  if (!bIsPass) bIsSuccess = false;
-
-  cReportProject* pProject = GetProject(sProjectName);
-
-  ASSERT(pProject != nullptr);
-  pProject->AddResult(sTestName, false, sContent);
-}
-
-
-enum class STATE
-{
-  NOT_CHECKED_OUT_NOT_BUILT,
-  CHECKED_OUT_NOT_BUILT,
-  CHECKED_OUT_BUILT,
-
-  CHECKOUT_FAILED,
-  BUILD_FAILED
-};
-
-class cProject
-{
-public:
-  cProject();
-
-  const std::vector<string_t>& GetRequiredProjects() const { return requires; }
-  void AddRequiredProject(const string_t& sProject) { requires.push_back(sProject); }
-
-  const string_t& GetURL() const { return sURL; }
-  void SetURL(const string_t& _sURL) { sURL = _sURL; }
-
-  bool IsCheckedOut() const { return (state == CHECKED_OUT_NOT_BUILT) || (state == CHECKED_OUT_BUILT); }
-  bool IsBuilt() const { return (state == CHECKED_OUT_BUILT); }
-  void SetState(STATE _state) { state = _state; }
-
-private:
-  std::vector<string_t> requires;
-  string_t sURL;
-  STATE state;
-};
-
-cProject::cProject() :
-  state(STATE::NOT_CHECKED_OUT_NOT_BUILT)
-{
-}
-
-class cManager
-{
-public:
-  void LoadProjectsList();
-  bool CheckoutAndBuildAllProjects();
-
-  bool IsError() const { return !errors.empty(); }
-  void SetError(const string_t& sProjectName, const string_t& sError) { errors.push_back(sProjectName + ": " + sError); }
-
-private:
-  std::vector<string_t> errors;
-  std::map<string_t, cProject*> projects;
-};
-
-void cManager::LoadProjectsList()
-{
-  string_t sName = ;
-  cProject* pProject = new cProject;
-  pProject->SetURL(sURL);
-  for each requirement {
-    pProject->AddRequiredProject(sRequiredProject);
-  }
-}
-
-bool cManager::CheckoutAndBuildAllProjects()
-{
-  for (each project) {
-    pProject->SetState(STATE::NOT_CHECKED_OUT_NOT_BUILT);
-  }
-
-  for (each project) {
-    const string_t sName = ;
-    const string_t sURL = pProject->GetURL();
-    std::vector<string_t> vParts = string::Split(sURL, TEXT("://"));
-    if (!vParts.empty()) {
-      string_t sCommand;
-
-      const string_t sProtocol = vParts[0];
-
-      if (!pProject->IsCheckedOut()) {
-        // Ok, we want to check out this project
-        if (sProtocol == TEXT("git")) {
-          // Assume git ("git://breathe.git.sourceforge.net/gitroot/breathe/breathe")
-          // git clone --depth 1 git://breathe.git.sourceforge.net/gitroot/breathe/breathe breathe
-
-          sCommand = TEXT("git clone --depth 1 ") + sURL + TEXT(" ") + sName;
-        } else {
-          // Assume svn ("http://sudokubang.svn.sourceforge.net/svnroot/sudokubang")
-          //svn co http://sudokubang.svn.sourceforge.net/svnroot/sudokubang sudoku
-
-          sCommand = TEXT("svn co ") + sURL + TEXT(" ") + sName;
-        }
-      } else {
-        // Ok, we have checked out this project before, we just want to update
-        ChangeDirectory(sName);
-
-        if (sProtocol == TEXT("git")) {
-          sCommand = TEXT("git pull");
-        } else {
-          sCommand = TEXT("svn update");
-        }
-      }
-
-      ExecuteCommand(sCommand);
-
-      // We have now either checked out or updated, we can now build
-      if (DirectoryExists(TEXT("project"))) {
-        // Move into the directory that contains the cmake stuff
-        ChangeDirectory(TEXT("project"));
-
-        ExecuteCommand(TEXT("cmake ."));
-
-        PipeExecuteCommand(TEXT("make"));
-        if (pipe returned 1) {
-          sLastLinesOfOutput = get last 15 lines of sOutput;
-          for (each line of sLastLinesOfOutput) {
-            SetError(sName, sLastLinesOfOutput);
-          }
-        }
-      }
-    }
-  }
-
-  const size_t n = errors.size();
-  for (size_t i = 0; i < n; i++) std::cout<<errors[i]<<std::endl;
-
-  return errors.empty();
-}
-
-void Run()
-{
-  cReport report;
-
-  // Perform checking out, building and unit testing
-  {
-    cManager manager;
-
-    manager.LoadProjectsList(report);
-
-    manager.CheckoutAndBuildAllProjects(report);
-  }
-
-
-  // Create the xml tree for the report
-  {
-    xml::document document;
-
-    const std::vector<cReportProject*>& projects = report.GetProjects();
-    const size_t nProjects = projects.size();
-    for (size_t iProject = 0; iProject < nProjects; iProject++) {
-      const std::vector<cReportProjectResult*>& results = project[iProject].GetResults();
-      const size_t nResults = results.size();
-      for (size_t iResult = 0; iResult < nResults; iResult++) {
-        const cReportProjectResult& result = results[iResult];
-        document.AddNode();
-        node.SetAttribute(TEXT("name"), result.GetName());
-        if (result.IsPass()) node.SetAttribute(TEXT("status"), TEXT("passed"));
-        else {
-          node.SetAttribute(TEXT("status"), TEXT("failed"));
-          node.SetContent(results.GetContent());
-        }
-      }
-    }
-
-    // Write the xml file
-    xml::writer writer;
-
-    writer.WriteToFile(document);
-  }
-
-  // Post xml file to http://chris.iluo.net/buildall
-  {
-    ...
-  }
-}
-*/
-
 int main(int argc, char** argv)
 {
   int iReturnValue = EXIT_FAILURE;
 
   {
-    cBuildManager manager(argc, argv);
+    cApplication application(argc, argv);
 
-    iReturnValue = manager.Run();
+    iReturnValue = application.Run();
   }
 
   return iReturnValue;
