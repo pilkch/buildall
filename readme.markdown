@@ -77,7 +77,7 @@ sudo apt-get install gnome-schedule
 And run it:  
 gnome-schedule  
 This would be your command line:  
-<path to buildall> -build  
+&lt;path to buildall&gt; -build  
 This will run the buildall as your user. After each run results.xml will be written to your home directory. 
 
 ### Credit
