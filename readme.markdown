@@ -54,15 +54,31 @@ OR
 sudo apt-get install cmake  
 
 
-The project can be built and run like so:  
+The project can be built like so:  
 cd buildall  
 cmake .  
 make  
-./buildall  
 ### build.xml
 
 TODO: Document the format of build.xml  
 
+
+### Running on Linux
+
+Running buildall in Build Mode:  
+./buildall -build  
+
+
+### Scheduling on Linux
+
+Gnome Schedule can help you set up buildall to run at a scheduled time. I run it at 3am so that I can just get the results in the morning.  
+You can install gnome-schedule like so:  
+sudo apt-get install gnome-schedule  
+And run it:  
+gnome-schedule  
+This would be your command line:  
+<path to buildall> -build  
+This will run the buildall as your user. After each run results.xml will be written to your home directory. 
 
 ### Credit
 
