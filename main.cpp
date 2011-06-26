@@ -1,3 +1,4 @@
+// Standard headers
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -11,6 +12,9 @@
 #include <vector>
 #include <list>
 
+// Boost headers
+#include <boost/asio.hpp>
+
 // Spitfire headers
 #include <spitfire/spitfire.h>
 
@@ -22,6 +26,9 @@
 #include <spitfire/storage/file.h>
 #include <spitfire/storage/filesystem.h>
 #include <spitfire/storage/xml.h>
+
+#include <spitfire/communication/http.h>
+#include <spitfire/communication/network.h>
 
 typedef spitfire::string_t string_t;
 typedef spitfire::ostringstream_t ostringstream_t;
@@ -1023,10 +1030,10 @@ void cApplication::BuildAllProjects()
   }
 
 
+  spitfire::document::cDocument document;
+
   // Create the xml tree for the report
   {
-    spitfire::document::cDocument document;
-
     spitfire::document::cNode* pDocumentNode = document.CreateElement("results");
     document.AppendChild(pDocumentNode);
 
@@ -1075,18 +1082,33 @@ void cApplication::BuildAllProjects()
       }
     }
 
+  const string_t sFilePath = spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeDirectory(), TEXT("results.xml"));
 
-    // Write the xml file for debugging purposes
+  // Write the xml file for debugging purposes
+  {
+    spitfire::xml::writer writer;
+
+    writer.WriteToFile(document, sFilePath);
+  }
+
+  // Post xml file to http://chris.iluo.net/buildall
+  {
+    std::string sPasswordSaltedUTF8;
+
     {
-      spitfire::xml::writer writer;
-
-      writer.WriteToFile(document, TEXT("/home/chris/results.xml"));
+      // Read password from xdg settings buildall/password.txt
+      sPasswordSaltedUTF8 = "password";
     }
 
-    // Post xml file to http://chris.iluo.net/buildall
-    {
-      // TODO: Do post http request
-    }
+    spitfire::network::http::cRequest request;
+    request.SetMethodPost();
+    request.SetHost(TEXT("chris.iluo.net"));
+    request.SetPath(TEXT("/tests.php"));
+    request.AddValue("password_salted", sPasswordSaltedUTF8);
+    request.AddPostFileFromPath(sFilePath);
+
+    spitfire::network::http::cHTTP http;
+    http.SendRequest(request);
   }
 }
 

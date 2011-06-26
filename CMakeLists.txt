@@ -51,6 +51,7 @@ ENDMACRO(PREFIX_PATHS)
 SET(LIBRARY_SPITFIRE_SOURCE_DIRECTORY spitfire/)
 SET(LIBRARY_SPITFIRE_SOURCE_FILES
 spitfire.cpp platform/pipe.cpp
+communication/http.cpp communication/network.cpp
 storage/document.cpp storage/file2.cpp storage/filesystem.cpp storage/xml.cpp
 util/log.cpp util/cConsoleApplication.cpp util/cString.cpp util/unittest.cpp)
 
@@ -88,7 +89,7 @@ ADD_EXECUTABLE(${PROJECT_NAME} main.cpp ${OUTPUT_LIBRARY_SOURCE_FILES} ${PROJECT
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREADED ON)
-FIND_PACKAGE(Boost 1.41.0 COMPONENTS date_time filesystem system signals thread iostreams)
+FIND_PACKAGE(Boost 1.41.0 COMPONENTS asio filesystem system iostreams)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
