@@ -25,6 +25,7 @@
 
 #include <spitfire/storage/file.h>
 #include <spitfire/storage/filesystem.h>
+#include <spitfire/storage/json.h>
 #include <spitfire/storage/xml.h>
 
 #include <spitfire/communication/http.h>
@@ -1030,49 +1031,35 @@ void cApplication::BuildAllProjects()
   }
 
 
-  spitfire::document::cDocument document;
+  spitfire::json::cDocument document;
 
-  // Create the xml tree for the report
+  // Create the json tree for the report
   {
-    spitfire::document::cNode* pDocumentNode = document.CreateElement("results");
-    document.AppendChild(pDocumentNode);
+    spitfire::json::cNode* pDocumentNode = &document;
+    pDocumentNode->SetTypeObject();
 
     const std::vector<cReportProject*>& projects = report.GetProjects();
     const size_t nProjects = projects.size();
     for (size_t iProject = 0; iProject < nProjects; iProject++) {
       const cReportProject& project = *projects[iProject];
-      spitfire::document::cNode* pProjectNode = document.CreateElement("project");
+      spitfire::json::cNode* pProjectNode = document.CreateNode("project");
       pDocumentNode->AppendChild(pProjectNode);
+      pProjectNode->SetTypeObject();
       pProjectNode->SetAttribute("name", project.GetName());
 
       // Project results
-      const std::vector<cReportResult*>& results = project.GetResults();
-      const size_t nResults = results.size();
-      for (size_t iResult = 0; iResult < nResults; iResult++) {
-        const cReportResult& result = *results[iResult];
-        spitfire::document::cNode* pResultNode = document.CreateElement("result");
-        pProjectNode->AppendChild(pResultNode);
-        assert(!result.GetName().empty());
-        pResultNode->SetAttribute("name", result.GetName());
-        if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
-        if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
-        else pResultNode->SetAttribute("status", TEXT("failed"));
-      }
+      {
+        spitfire::json::cNode* pProjectResults = document.CreateNode("results");
+        pProjectNode->AppendChild(pProjectResults);
+        pProjectResults->SetTypeArray();
 
-      // Target results
-      const std::vector<cReportTarget*>& targets = project.GetTargets();
-      const size_t nTargets = targets.size();
-      for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
-        const cReportTarget& target = *targets[iTarget];
-        spitfire::document::cNode* pTargetNode = document.CreateElement("target");
-        pProjectNode->AppendChild(pTargetNode);
-        pTargetNode->SetAttribute("name", target.GetName());
-        const std::vector<cReportResult*>& results = target.GetResults();
+        const std::vector<cReportResult*>& results = project.GetResults();
         const size_t nResults = results.size();
         for (size_t iResult = 0; iResult < nResults; iResult++) {
           const cReportResult& result = *results[iResult];
-          spitfire::document::cNode* pResultNode = document.CreateElement("result");
-          pTargetNode->AppendChild(pResultNode);
+          spitfire::json::cNode* pResultNode = document.CreateNode("result");
+          pProjectResults->AppendChild(pResultNode);
+          pResultNode->SetTypeObject();
           assert(!result.GetName().empty());
           pResultNode->SetAttribute("name", result.GetName());
           if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
@@ -1080,18 +1067,49 @@ void cApplication::BuildAllProjects()
           else pResultNode->SetAttribute("status", TEXT("failed"));
         }
       }
+
+      // Target results
+      {
+        spitfire::json::cNode* pTargetResults = document.CreateNode("targets");
+        pProjectNode->AppendChild(pTargetResults);
+        pTargetResults->SetTypeArray();
+
+        const std::vector<cReportTarget*>& targets = project.GetTargets();
+        const size_t nTargets = targets.size();
+        for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
+          const cReportTarget& target = *targets[iTarget];
+          spitfire::json::cNode* pTargetNode = document.CreateNode("target");
+          pTargetResults->AppendChild(pTargetNode);
+          pTargetNode->SetTypeObject();
+          pTargetNode->SetAttribute("name", target.GetName());
+          const std::vector<cReportResult*>& results = target.GetResults();
+          const size_t nResults = results.size();
+          for (size_t iResult = 0; iResult < nResults; iResult++) {
+            const cReportResult& result = *results[iResult];
+            spitfire::json::cNode* pResultNode = document.CreateNode("result");
+            pTargetNode->AppendChild(pResultNode);
+            pResultNode->SetTypeObject();
+            assert(!result.GetName().empty());
+            pResultNode->SetAttribute("name", result.GetName());
+            if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
+            if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
+            else pResultNode->SetAttribute("status", TEXT("failed"));
+          }
+        }
+      }
     }
+  }
 
-  const string_t sFilePath = spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeDirectory(), TEXT("results.xml"));
+  const string_t sFilePath = spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeDirectory(), TEXT("results.json"));
 
-  // Write the xml file for debugging purposes
+  // Write the json file for debugging purposes
   {
-    spitfire::xml::writer writer;
+    spitfire::json::writer writer;
 
     writer.WriteToFile(document, sFilePath);
   }
 
-  // Post xml file to http://chris.iluo.net/buildall
+  // Post json file to http://chris.iluo.net/buildall
   {
     std::string sPasswordSaltedUTF8;
 
