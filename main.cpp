@@ -89,15 +89,15 @@ private:
 
 cReportResult* cReportTarget::GetOrCreateTest(const string_t& sTestName)
 {
-  std::cout<<"cReportTarget::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
+  //std::cout<<"cReportTarget::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
   cReportResult* pResult = nullptr;
 
   // Find the test if it has already been added
   const size_t n = results.size();
   for (size_t i = 0; i < n; i++) {
-    std::cout<<"cReportTarget::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
+    //std::cout<<"cReportTarget::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
     if (results[i]->GetName() == sTestName) {
-      std::cout<<"cReportTarget::GetOrCreateTest Found"<<std::endl;
+      //std::cout<<"cReportTarget::GetOrCreateTest Found"<<std::endl;
       pResult = results[i];
       break;
     }
@@ -105,7 +105,7 @@ cReportResult* cReportTarget::GetOrCreateTest(const string_t& sTestName)
 
   // We didn't find the test so we need to create a new one
   if (pResult == nullptr) {
-    std::cout<<"cReportTarget::GetOrCreateTest Not found, creating"<<std::endl;
+    //std::cout<<"cReportTarget::GetOrCreateTest Not found, creating"<<std::endl;
     pResult = new cReportResult;
     pResult->SetName(sTestName);
     pResult->SetNotRun();
@@ -176,15 +176,15 @@ cReportProject::cReportProject(const string_t& _sName) :
 
 cReportResult* cReportProject::GetOrCreateTest(const string_t& sTestName)
 {
-  std::cout<<"cReportProject::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
+  //std::cout<<"cReportProject::GetOrCreateTest \""<<spitfire::string::ToUTF8(sTestName)<<"\""<<std::endl;
   cReportResult* pResult = nullptr;
 
   // Find the test if it has already been added
   const size_t n = results.size();
   for (size_t i = 0; i < n; i++) {
-    std::cout<<"cReportProject::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
+    //std::cout<<"cReportProject::GetOrCreateTest "<<i<<" is "<<spitfire::string::ToUTF8(results[i]->GetName())<<std::endl;
     if (results[i]->GetName() == sTestName) {
-      std::cout<<"cReportProject::GetOrCreateTest Found"<<std::endl;
+      //std::cout<<"cReportProject::GetOrCreateTest Found"<<std::endl;
       pResult = results[i];
       break;
     }
@@ -192,7 +192,7 @@ cReportResult* cReportProject::GetOrCreateTest(const string_t& sTestName)
 
   // We didn't find the test so we need to create a new one
   if (pResult == nullptr) {
-    std::cout<<"cReportProject::GetOrCreateTest Not found, creating"<<std::endl;
+    //std::cout<<"cReportProject::GetOrCreateTest Not found, creating"<<std::endl;
     pResult = new cReportResult;
     pResult->SetName(sTestName);
     pResult->SetNotRun();
@@ -204,15 +204,15 @@ cReportResult* cReportProject::GetOrCreateTest(const string_t& sTestName)
 
 cReportTarget* cReportProject::GetOrCreateTarget(const string_t& sName)
 {
-  std::cout<<"cReportProject::GetOrCreateTarget \""<<spitfire::string::ToUTF8(sName)<<"\""<<std::endl;
+  //std::cout<<"cReportProject::GetOrCreateTarget \""<<spitfire::string::ToUTF8(sName)<<"\""<<std::endl;
   cReportTarget* pTarget = nullptr;
 
   // Find the test if it has already been added
   const size_t n = targets.size();
   for (size_t i = 0; i < n; i++) {
-    std::cout<<"cReportProject::GetOrCreateTarget "<<i<<" is "<<spitfire::string::ToUTF8(targets[i]->GetName())<<std::endl;
+    //std::cout<<"cReportProject::GetOrCreateTarget "<<i<<" is "<<spitfire::string::ToUTF8(targets[i]->GetName())<<std::endl;
     if (targets[i]->GetName() == sName) {
-      std::cout<<"cReportProject::GetOrCreateTarget Found"<<std::endl;
+      //std::cout<<"cReportProject::GetOrCreateTarget Found"<<std::endl;
       pTarget = targets[i];
       break;
     }
@@ -220,7 +220,7 @@ cReportTarget* cReportProject::GetOrCreateTarget(const string_t& sName)
 
   // We didn't find the test so we need to create a new one
   if (pTarget == nullptr) {
-    std::cout<<"cReportProject::GetOrCreateTarget Not found, creating"<<std::endl;
+    //std::cout<<"cReportProject::GetOrCreateTarget Not found, creating"<<std::endl;
     pTarget = new cReportTarget;
     pTarget->SetName(sName);
     targets.push_back(pTarget);
