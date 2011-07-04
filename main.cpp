@@ -1111,22 +1111,31 @@ void cApplication::BuildAllProjects()
 
   // Post json file to http://chris.iluo.net/buildall
   {
-    std::string sPasswordSaltedUTF8;
+    std::string sHostUTF8;
+    std::string sPathUTF8;
+
+    // I thought about storing the password salted and sending that to the server.  However, there is no point, if the server accepts a salted password, then the salted password effectively becomes the password.
+    // This is a randomly generated string, it is not your user password and is not used for anything else so it does not matter if it is discovered.  All an attacker can do with it is upload some bogus test results to the server.
+    std::string sPasswordUTF8;
 
     {
-      // Read password from xdg settings buildall/password.txt
-      sPasswordSaltedUTF8 = "password";
+      // Read host, path and password from xdg settings buildall/config.json
+      sHostUTF8 = "chris.iluo.net";
+      sPathUTF8 = "/tests/submit.php";
+      sPasswordUTF8 = "password";
     }
 
     spitfire::network::http::cRequest request;
     request.SetMethodPost();
-    request.SetHost(TEXT("chris.iluo.net"));
-    request.SetPath(TEXT("/tests.php"));
-    request.AddValue("password_salted", sPasswordSaltedUTF8);
+    request.SetHost(spitfire::string::ToString_t(sHostUTF8));
+    request.SetPath(spitfire::string::ToString_t(sPathUTF8));
+    request.AddValue("password_salted", sPasswordUTF8);
     request.AddPostFileFromPath(sFilePath);
 
     spitfire::network::http::cHTTP http;
     http.SendRequest(request);
+    bool bResult = http.IsSuccessful();
+    std::cout<<"Result="<<bResult<<std::endl;
   }
 }
 
