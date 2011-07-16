@@ -1057,7 +1057,7 @@ void cApplication::BuildAllProjects()
         const size_t nResults = results.size();
         for (size_t iResult = 0; iResult < nResults; iResult++) {
           const cReportResult& result = *results[iResult];
-          spitfire::json::cNode* pResultNode = document.CreateNode("result");
+          spitfire::json::cNode* pResultNode = document.CreateNode();
           pProjectResults->AppendChild(pResultNode);
           pResultNode->SetTypeObject();
           assert(!result.GetName().empty());
@@ -1078,16 +1078,22 @@ void cApplication::BuildAllProjects()
         const size_t nTargets = targets.size();
         for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
           const cReportTarget& target = *targets[iTarget];
-          spitfire::json::cNode* pTargetNode = document.CreateNode("target");
+          spitfire::json::cNode* pTargetNode = document.CreateNode();
           pTargetResults->AppendChild(pTargetNode);
           pTargetNode->SetTypeObject();
           pTargetNode->SetAttribute("name", target.GetName());
+
+          spitfire::json::cNode* pResultsNode = document.CreateNode();
+          pTargetNode->AppendChild(pResultsNode);
+          pResultsNode->SetTypeArray();
+          pResultsNode->SetName("results");
+
           const std::vector<cReportResult*>& results = target.GetResults();
           const size_t nResults = results.size();
           for (size_t iResult = 0; iResult < nResults; iResult++) {
             const cReportResult& result = *results[iResult];
-            spitfire::json::cNode* pResultNode = document.CreateNode("result");
-            pTargetNode->AppendChild(pResultNode);
+            spitfire::json::cNode* pResultNode = document.CreateNode();
+            pResultsNode->AppendChild(pResultNode);
             pResultNode->SetTypeObject();
             assert(!result.GetName().empty());
             pResultNode->SetAttribute("name", result.GetName());
@@ -1129,8 +1135,8 @@ void cApplication::BuildAllProjects()
     request.SetMethodPost();
     request.SetHost(spitfire::string::ToString_t(sHostUTF8));
     request.SetPath(spitfire::string::ToString_t(sPathUTF8));
-    request.AddValue("password_salted", sPasswordUTF8);
-    request.AddPostFileFromPath(sFilePath);
+    request.AddValue("password", sPasswordUTF8);
+    request.AddPostFileFromPath("file", sFilePath);
 
     spitfire::network::http::cHTTP http;
     http.SendRequest(request);
