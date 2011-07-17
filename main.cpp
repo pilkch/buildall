@@ -1086,7 +1086,7 @@ void cConfig::Load()
   }
 
   //<config>
-  //  <account host="chris.iluo.net" path="/tests/submit.php" secret="secret">
+  //  <account host="chris.iluo.net" path="/tests/index.php" secret="secret">
   //</config>
 
   iterAccount.FindChild("config");
@@ -1157,7 +1157,7 @@ void cApplication::BuildAllProjects()
           assert(!result.GetName().empty());
           pResultNode->SetAttribute("name", result.GetName());
           if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
-          if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
+          else if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
           else pResultNode->SetAttribute("status", TEXT("failed"));
         }
       }
@@ -1192,7 +1192,7 @@ void cApplication::BuildAllProjects()
             assert(!result.GetName().empty());
             pResultNode->SetAttribute("name", result.GetName());
             if (result.IsNotRun()) pResultNode->SetAttribute("status", TEXT("notrun"));
-            if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
+            else if (result.IsPassed()) pResultNode->SetAttribute("status", TEXT("passed"));
             else pResultNode->SetAttribute("status", TEXT("failed"));
           }
         }
