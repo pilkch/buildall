@@ -463,8 +463,6 @@ public:
 private:
   void SetError(const string_t& sErrorMessage);
 
-  string_t GetXMLFilePath() const;
-
   void LoadFromXMLFile();
 
   // Targets
@@ -958,12 +956,14 @@ class cApplication : public spitfire::cConsoleApplication
 public:
   cApplication(int argc, const char* const* argv);
 
+  string_t GetConfigXMLFilePath() const;
+
 private:
   virtual void _PrintHelp() const;
   virtual string_t _GetVersion() const;
   virtual bool _Run(); // NOTE: This may not be run at all, for example if "--help" is the first argument
 
-  string_t GetXMLFilePath() const;
+  string_t GetBuildXMLFilePath() const;
 
   void ListAllProjects();
   void BuildAllProjects();
@@ -974,14 +974,19 @@ cApplication::cApplication(int argc, const char* const* argv) :
 {
 }
 
-string_t cApplication::GetXMLFilePath() const
+string_t cApplication::GetConfigXMLFilePath() const
+{
+  return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("config.xml"));
+}
+
+string_t cApplication::GetBuildXMLFilePath() const
 {
   return spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeConfigurationFilesDirectory(), GetApplicationName(), TEXT("build.xml"));
 }
 
 void cApplication::_PrintHelp() const
 {
-  const string_t sXMLFilePath = GetXMLFilePath();
+  const string_t sXMLFilePath = GetBuildXMLFilePath();
 
   std::cout<<"Usage: "<<spitfire::string::ToUTF8(GetApplicationName())<<" [OPTION]"<<std::endl;
   std::cout<<std::endl;
@@ -1005,7 +1010,7 @@ void cApplication::ListAllProjects()
   cReport report;
 
   {
-    cBuildManager manager(GetXMLFilePath());
+    cBuildManager manager(GetBuildXMLFilePath());
 
     manager.ListAllProjects(report);
   }
@@ -1020,12 +1025,101 @@ void cApplication::ListAllProjects()
   }
 }
 
+class cConfig
+{
+public:
+  explicit cConfig(const cApplication& application);
+
+  void Load();
+
+  const std::string& GetHostUTF8() const { return sHostUTF8; }
+  const std::string& GetPathUTF8() const { return sPathUTF8; }
+  const std::string& GetSecretUTF8() const { return sSecretUTF8; }
+
+private:
+  void Clear();
+
+  const cApplication& application;
+
+  std::string sHostUTF8;
+  std::string sPathUTF8;
+  std::string sSecretUTF8;
+};
+
+cConfig::cConfig(const cApplication& _application) :
+  application(_application)
+{
+}
+
+void cConfig::Clear()
+{
+  sHostUTF8.clear();
+  sPathUTF8.clear();
+  sSecretUTF8.clear();
+}
+
+void cConfig::Load()
+{
+  Clear();
+
+  const string_t sXMLFilePath = application.GetConfigXMLFilePath();
+  std::cout<<"cConfig::Load \""<<spitfire::string::ToUTF8(sXMLFilePath)<<"\""<<std::endl;
+  if (!spitfire::filesystem::FileExists(sXMLFilePath)) {
+    std::wcerr<<TEXT("XML File \"")<<sXMLFilePath<<TEXT("\" doesn't exist")<<std::endl;
+    return;
+  }
+
+  spitfire::document::cDocument document;
+
+  {
+    // Read the xml file
+    spitfire::xml::reader reader;
+
+    reader.ReadFromFile(document, sXMLFilePath);
+  }
+
+  // Parse the xml file
+  spitfire::document::cNode::iterator iterAccount(document);
+  if (!iterAccount.IsValid()) {
+    std::wcerr<<TEXT("config.xml does not contain valid xml data")<<std::endl;
+    return;
+  }
+
+  //<config>
+  //  <account host="chris.iluo.net" path="/tests/submit.php" secret="secret">
+  //</config>
+
+  iterAccount.FindChild("config");
+  if (!iterAccount.IsValid()) {
+    std::wcerr<<TEXT("config.xml does not contain a config root node")<<std::endl;
+    return;
+  }
+
+  iterAccount.FindChild("account");
+  if (iterAccount.IsValid()) {
+    if (!iterAccount.GetAttribute("host", sHostUTF8)) {
+      std::wcerr<<TEXT("config.xml contains an account without a host")<<std::endl;
+      return;
+    }
+
+    if (!iterAccount.GetAttribute("path", sPathUTF8)) {
+      std::wcerr<<TEXT("config.xml contains a project without a path")<<std::endl;
+      return;
+    }
+
+    if (!iterAccount.GetAttribute("secret", sSecretUTF8)) {
+      std::wcerr<<TEXT("config.xml contains a project without a secret")<<std::endl;
+      return;
+    }
+  }
+}
+
 void cApplication::BuildAllProjects()
 {
   cReport report;
 
   {
-    cBuildManager manager(GetXMLFilePath());
+    cBuildManager manager(GetBuildXMLFilePath());
 
     manager.BuildAllProjects(report);
   }
@@ -1117,31 +1211,25 @@ void cApplication::BuildAllProjects()
 
   // Post json file to http://chris.iluo.net/buildall
   {
-    std::string sHostUTF8;
-    std::string sPathUTF8;
+    // Read host, path and secret from .config/buildall/config.xml
+    cConfig config(*this);
+    config.Load();
 
-    // I thought about storing the password salted and sending that to the server.  However, there is no point, if the server accepts a salted password, then the salted password effectively becomes the password.
-    // This is a randomly generated string, it is not your user password and is not used for anything else so it does not matter if it is discovered.  All an attacker can do with it is upload some bogus test results to the server.
-    std::string sPasswordUTF8;
+    if (!config.GetHostUTF8().empty() && !config.GetPathUTF8().empty()) {
+      spitfire::network::http::cRequest request;
+      request.SetMethodPost();
+      request.SetHost(spitfire::string::ToString_t(config.GetHostUTF8()));
+      request.SetPath(spitfire::string::ToString_t(config.GetPathUTF8()));
+      if (!config.GetSecretUTF8().empty()) request.AddValue("secret", config.GetSecretUTF8());
+      request.AddPostFileFromPath("file", sFilePath);
 
-    {
-      // Read host, path and password from xdg settings buildall/config.json
-      sHostUTF8 = "chris.iluo.net";
-      sPathUTF8 = "/tests/submit.php";
-      sPasswordUTF8 = "password";
+      spitfire::network::http::cHTTP http;
+      http.SendRequest(request);
+      bool bResult = http.IsSuccessful();
+      std::cout<<"Result="<<bResult<<std::endl;
     }
 
-    spitfire::network::http::cRequest request;
-    request.SetMethodPost();
-    request.SetHost(spitfire::string::ToString_t(sHostUTF8));
-    request.SetPath(spitfire::string::ToString_t(sPathUTF8));
-    request.AddValue("password", sPasswordUTF8);
-    request.AddPostFileFromPath("file", sFilePath);
 
-    spitfire::network::http::cHTTP http;
-    http.SendRequest(request);
-    bool bResult = http.IsSuccessful();
-    std::cout<<"Result="<<bResult<<std::endl;
   }
 }
 
