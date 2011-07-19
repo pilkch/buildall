@@ -1132,12 +1132,16 @@ void cApplication::BuildAllProjects()
     spitfire::json::cNode* pDocumentNode = &document;
     pDocumentNode->SetTypeObject();
 
+    spitfire::json::cNode* pProjectsNode = document.CreateNode("projects");
+    pDocumentNode->AppendChild(pProjectsNode);
+    pProjectsNode->SetTypeArray();
+
     const std::vector<cReportProject*>& projects = report.GetProjects();
     const size_t nProjects = projects.size();
     for (size_t iProject = 0; iProject < nProjects; iProject++) {
       const cReportProject& project = *projects[iProject];
-      spitfire::json::cNode* pProjectNode = document.CreateNode("project");
-      pDocumentNode->AppendChild(pProjectNode);
+      spitfire::json::cNode* pProjectNode = document.CreateNode();
+      pProjectsNode->AppendChild(pProjectNode);
       pProjectNode->SetTypeObject();
       pProjectNode->SetAttribute("name", project.GetName());
 
@@ -1202,7 +1206,7 @@ void cApplication::BuildAllProjects()
 
   const string_t sFilePath = spitfire::filesystem::MakeFilePath(spitfire::filesystem::GetHomeDirectory(), TEXT("results.json"));
 
-  // Write the json file for debugging purposes
+  // Write the json to a file
   {
     spitfire::json::writer writer;
 
