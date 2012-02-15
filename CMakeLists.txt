@@ -16,6 +16,8 @@ SET(LIBRARY_SRC "${CMAKE_SOURCE_DIR}/src/")
 ADD_DEFINITIONS("-Wall -W -Wextra -Werror -Wformat -Wformat-y2k -Winit-self -Wstack-protector -Wunknown-pragmas -Wundef -Wcast-qual -Wwrite-strings -Wno-unused-parameter -Wpointer-arith -Wno-switch -Woverloaded-virtual -Wno-stack-protector -Wmissing-include-dirs -Wuninitialized -Wc++0x-compat -std=c++0x -ffor-scope -O2")
 
 ADD_DEFINITIONS("-DBUILDALL")
+ADD_DEFINITIONS("-DBUILD_HTML_LOG")
+ADD_DEFINITIONS("-DBUILD_SPITFIRE_UNITTEST")
 
 ADD_DEFINITIONS("-DUNICODE -D_UNICODE")
 
@@ -52,8 +54,8 @@ SET(LIBRARY_SPITFIRE_SOURCE_DIRECTORY spitfire/)
 SET(LIBRARY_SPITFIRE_SOURCE_FILES
 spitfire.cpp platform/pipe.cpp
 communication/http.cpp communication/network.cpp
-storage/document.cpp storage/file2.cpp storage/filesystem.cpp storage/json.cpp storage/xml.cpp
-util/log.cpp util/cConsoleApplication.cpp util/cString.cpp util/unittest.cpp)
+storage/document.cpp storage/file.cpp storage/filesystem.cpp storage/json.cpp storage/xml.cpp
+util/log.cpp util/cConsoleApplication.cpp util/string.cpp util/thread.cpp util/unittest.cpp)
 
 IF(WIN32)
   SET(LIBRARY_SPITFIRE_SOURCE_FILES ${LIBRARY_SPITFIRE_SOURCE_FILES})
@@ -89,28 +91,32 @@ ADD_EXECUTABLE(${PROJECT_NAME} main.cpp ${OUTPUT_LIBRARY_SOURCE_FILES} ${PROJECT
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREADED ON)
-FIND_PACKAGE(Boost 1.41.0 COMPONENTS asio filesystem system iostreams)
 
-INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+FIND_PACKAGE(Boost REQUIRED)
+INCLUDE_DIRECTORIES(${BOOST_INCLUDE_DIR})
 
-#SET(LIBRARIES
+
+SET(LIBRARIES
+  XDG-basedir
 #  GLU
 #  SDL
 #  SDL_image
 #  SDL_ttf
-#)
+)
 
 
 # Some of the libraries have different names than their Find*.cmake name
 SET(LIBRARIES_LINKED
   boost_filesystem
   boost_iostreams
+  boost_system
+  xdg-basedir
 )
 
 
-#FOREACH(LIBRARY_FILE ${LIBRARIES})
-#  Find_Package(${LIBRARY_FILE} REQUIRED)
-#ENDFOREACH(LIBRARY_FILE)
+FOREACH(LIBRARY_FILE ${LIBRARIES})
+  Find_Package(${LIBRARY_FILE} REQUIRED)
+ENDFOREACH(LIBRARY_FILE)
 
 #need to link to some other libraries ? just add them here
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIBRARIES_LINKED} ${Boost_LIBRARIES})

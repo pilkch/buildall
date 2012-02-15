@@ -19,7 +19,7 @@
 #include <spitfire/spitfire.h>
 
 #include <spitfire/util/cConsoleApplication.h>
-#include <spitfire/util/cString.h>
+#include <spitfire/util/string.h>
 
 #include <spitfire/platform/pipe.h>
 
@@ -787,7 +787,7 @@ void cBuildManager::Build(cReport& report, const cProject& project, const cTarge
   const string_t sTargetFolder = spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName, target.sFolder);
 
   // Change to the target directory so that cmake and make will work
-  spitfire::filesystem::cScopedDirectoryChange changeDirectory(sTargetFolder);
+  spitfire::filesystem::cScopedDirectoryChangeMainThread changeDirectory(sTargetFolder);
 
   if (IsJavaTarget(project, target)) BuildJava(report, project, target);
   else BuildCPlusPlus(report, project, target);
@@ -1086,7 +1086,7 @@ void cConfig::Load()
   }
 
   //<config>
-  //  <account host="chris.iluo.net" path="/tests/index.php" secret="secret">
+  //  <account host="chris.iluo.net" path="/tests/index.php" secret="secret"/>
   //</config>
 
   iterAccount.FindChild("config");
