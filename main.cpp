@@ -490,6 +490,7 @@ private:
   void Test(cReport& report, const cProject& project, const cTarget& target);
 
   // Projects
+  bool CheckPrerequisites(cReport& report, const cProject& project);
   void Clone(cReport& report, const cProject& project);
   void Build(cReport& report, const cProject& project);
   void Test(cReport& report, const cProject& project);
@@ -696,6 +697,24 @@ void cBuildManager::LoadFromXMLFile()
 
   const size_t n = projects.size();
   for (size_t i = 0; i < n; i++) projects[i].BuildDepencenciesGraph(projects);
+}
+
+bool cBuildManager::CheckPrerequisites(cReport& report, const cProject& project)
+{
+  const bool bIsGit = project.IsProtocolGit();
+
+  // Find out whether the executable for this protocol is installed
+  string_t sExecutable;
+  if (bIsGit) sExecutable = "git";
+  else sExecutable = "svn";
+
+  const string_t sCommand = "which " + sExecutable;
+
+  int iReturnCode = -1;
+  const string_t sOutput = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
+  const bool bFound = (sOutput.find(sExecutable) != std::string::npos);
+  if (!bFound) SetError("Tool \"" + sExecutable + "\" for project \"" + project.sName + "\" has not been installed yet");
+  return bFound;
 }
 
 void cBuildManager::Clone(cReport& report, const cProject& project)
@@ -918,6 +937,18 @@ void cBuildManager::BuildAllProjects(cReport& report)
   }
 
   const size_t nProjects = projects.size();
+
+  LOG<<"Checking prerequisites for projects"<<std::endl;
+  bool bPrerequisitesFailed = false;
+  for (size_t i = 0; i < nProjects; i++) {
+    const cProject& project = projects[i];
+    if (!CheckPrerequisites(report, project)) bPrerequisitesFailed = true;
+  }
+
+  if (bPrerequisitesFailed) {
+    SetError(TEXT("Prerequisites failed"));
+    return;
+  }
 
   // Create a list of our projects that is sorted by least dependencies to most dependencies
   std::vector<cProject> projectsSorted = projects;
