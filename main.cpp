@@ -393,6 +393,9 @@ class cProject
 public:
   static bool DependenciesCompare(const cProject& lhs, const cProject& rhs);
 
+  bool IsProtocolGit() const;
+  bool IsProtocolSvn() const;
+
   string_t sName;
   string_t sURL;
   string_t sFolderName;
@@ -428,6 +431,18 @@ void cProject::BuildDepencenciesGraph(std::vector<cProject>& allProjects)
       std::cerr<<"Dependency \""<<spitfire::string::ToUTF8(sNameToFind)<<"\" not found for project \""<<spitfire::string::ToUTF8(sName)<<"\""<<std::endl;
     }
   }
+}
+
+bool cProject::IsProtocolGit() const
+{
+  const string_t sPossiblyGitProtocol = sURL.substr(0, 3);
+  const bool bIsGit = (sPossiblyGitProtocol == TEXT("git"));
+  return bIsGit;
+}
+
+bool cProject::IsProtocolSvn() const
+{
+  return !IsProtocolGit();
 }
 
 bool cProject::IsDependentOn(const cProject& rhs) const
@@ -682,8 +697,7 @@ void cBuildManager::LoadFromXMLFile()
 
 void cBuildManager::Clone(cReport& report, const cProject& project)
 {
-  string_t sPossiblyGitProtocol = project.sURL.substr(0, 3);
-  bool bIsGit = (sPossiblyGitProtocol == TEXT("git"));
+  const bool bIsGit = project.IsProtocolGit();
 
   string_t sCommand;
   if (bIsGit) sCommand = TEXT("git clone --depth 1");
