@@ -12,6 +12,17 @@ SET(PROJECT_DIRECTORY "./")
 SET(LIBRARY_INCLUDE "${CMAKE_SOURCE_DIR}/include/")
 SET(LIBRARY_SRC "${CMAKE_SOURCE_DIR}/src/")
 
+
+# Debug build
+SET(CMAKE_BUILD_TYPE Debug)
+
+# Release build
+#SET(CMAKE_BUILD_TYPE Release)
+#SET(CMAKE_CXX_FLAGS_RELEASE "-O3")
+#SET(CMAKE_C_FLAGS_RELEASE "-O3")
+#ADD_DEFINITIONS("-DNDEBUG")
+
+
 # Add definitions, compiler switches, etc.
 ADD_DEFINITIONS("-Wall -W -Wextra -Werror -Wformat -Wformat-y2k -Winit-self -Wstack-protector -Wunknown-pragmas -Wundef -Wcast-qual -Wwrite-strings -Wno-unused-parameter -Wpointer-arith -Wno-switch -Woverloaded-virtual -Wno-stack-protector -Wmissing-include-dirs -Wuninitialized -Wc++0x-compat -std=c++0x -ffor-scope -O2")
 
