@@ -514,6 +514,7 @@ void cBuildManager::SetError(const string_t& _sErrorMessage)
 {
   bIsError = true;
   sErrorMessage = _sErrorMessage;
+  LOGERROR<<sErrorMessage<<std::endl;
 }
 
 /*
@@ -603,13 +604,15 @@ void cBuildManager::LoadFromXMLFile()
     return;
   }
 
+  spitfire::util::cProcessInterfaceVoid interface;
+
   spitfire::document::cDocument document;
 
   {
     // Read the xml file
     spitfire::xml::reader reader;
 
-    reader.ReadFromFile(document, sXMLFilePath);
+    reader.ReadFromFile(interface, document, sXMLFilePath);
   }
 
   // Parse the xml file
@@ -705,7 +708,7 @@ void cBuildManager::Clone(cReport& report, const cProject& project)
 
   sCommand += TEXT(" ") + project.sURL + TEXT(" ") + spitfire::filesystem::MakeFilePath(sWorkingFolder, project.sFolderName);
 
-  std::wcout<<TEXT("cBuildManager::Clone sCommand=\"")<<sCommand<<TEXT("\"")<<std::endl;
+  LOG<<TEXT("cBuildManager::Clone sCommand=\"")<<sCommand<<TEXT("\"")<<std::endl;
 
   int iReturnCode = -1;
   std::string sBuffer = spitfire::platform::PipeReadToString(sCommand, iReturnCode);
@@ -716,7 +719,7 @@ void cBuildManager::Clone(cReport& report, const cProject& project)
     report.SetTestResultFailed(project.sName, TEXT("clone"));
   } else {
     #ifdef BUILD_DEBUG
-    std::wcout<<TEXT("cBuildManager::Clone Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+    LOG<<TEXT("cBuildManager::Clone Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
     #endif
     report.SetTestResultPassed(project.sName, TEXT("clone"));
   }
@@ -747,7 +750,7 @@ void cBuildManager::BuildJava(cReport& report, const cProject& project, const cT
       return;
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::BuildJava ant build process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      LOG<<TEXT("cBuildManager::BuildJava ant build process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
       report.SetTestResultPassed(project.sName, target.sName, TEXT("ant build"));
     }
@@ -770,7 +773,7 @@ void cBuildManager::BuildCPlusPlus(cReport& report, const cProject& project, con
       return;
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::BuildCPlusPlus cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      LOG<<TEXT("cBuildManager::BuildCPlusPlus cmake process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
       report.SetTestResultPassed(project.sName, target.sName, TEXT("cmake"));
     }
@@ -789,7 +792,7 @@ void cBuildManager::BuildCPlusPlus(cReport& report, const cProject& project, con
       report.SetTestResultFailed(project.sName, target.sName, TEXT("make"));
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::BuildCPlusPlus make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      LOG<<TEXT("cBuildManager::BuildCPlusPlus make process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
       report.SetTestResultPassed(project.sName, target.sName, TEXT("make"));
     }
@@ -832,7 +835,7 @@ void cBuildManager::TestJava(cReport& report, const cProject& project, const cTa
       return;
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::TestJava ant Application process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      LOG<<TEXT("cBuildManager::TestJava ant Application process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
       report.SetTestResultPassed(project.sName, target.sName, TEXT("ant Application"));
     }
@@ -858,7 +861,7 @@ void cBuildManager::TestCPlusPlus(cReport& report, const cProject& project, cons
       SetError(o.str());
     } else {
       #ifdef BUILD_DEBUG
-      std::wcout<<TEXT("cBuildManager::TestCPlusPlus Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
+      LOG<<TEXT("cBuildManager::TestCPlusPlus Process \"")<<sCommand<<TEXT("\" returned ")<<iReturnCode<<TEXT(", sBuffer=\"")<<spitfire::string::ToString_t(sBuffer)<<TEXT("\"")<<std::endl;
       #endif
     }
   }
@@ -914,14 +917,15 @@ void cBuildManager::BuildAllProjects(cReport& report)
     return;
   }
 
+  const size_t nProjects = projects.size();
+
   // Create a list of our projects that is sorted by least dependencies to most dependencies
   std::vector<cProject> projectsSorted = projects;
   std::sort(projectsSorted.begin(), projectsSorted.end(), cProject::DependenciesCompare);
 
   // Add an entry for each project to the report
-  const size_t nProjects = projects.size();
   for (size_t i = 0; i < nProjects; i++) {
-    cProject& project = projects[i];
+    const cProject& project = projects[i];
     report.AddProject(project.sName);
     report.AddTest(project.sName, TEXT("clone"));
   }
@@ -931,7 +935,7 @@ void cBuildManager::BuildAllProjects(cReport& report)
   sWorkingFolder = temp.GetFolder();
 
   // Pull all projects
-  std::wcout<<TEXT("Cloning Projects")<<std::endl;
+  LOG<<TEXT("Cloning Projects")<<std::endl;
   for (size_t i = 0; i < nProjects; i++) {
     const cProject& project = projects[i];
     Clone(report, project);
@@ -939,11 +943,11 @@ void cBuildManager::BuildAllProjects(cReport& report)
 
   // Add an entry for each project to the report
   for (size_t i = 0; i < nProjects; i++) {
-    cProject& project = projects[i];
+    const cProject& project = projects[i];
 
     const size_t nTargets = project.targets.size();
     for (size_t iTarget = 0; iTarget < nTargets; iTarget++) {
-      cTarget& target = project.targets[iTarget];
+      const cTarget& target = project.targets[iTarget];
       if (IsJavaTarget(project, target)) {
         report.AddTest(project.sName, target.sName, TEXT("ant build"));
       } else {
@@ -955,7 +959,7 @@ void cBuildManager::BuildAllProjects(cReport& report)
 
   // If cloning was successful then we are ready to build and test our projects
   if (!bIsError) {
-    std::wcout<<TEXT("Building and Testing Projects")<<std::endl;
+    LOG<<TEXT("Building and Testing Projects")<<std::endl;
     // Compile and test all projects
     for (size_t i = 0; i < nProjects; i++) {
       const cProject& project = projects[i];
@@ -1079,9 +1083,11 @@ void cConfig::Load()
   const string_t sXMLFilePath = application.GetConfigXMLFilePath();
   std::cout<<"cConfig::Load \""<<spitfire::string::ToUTF8(sXMLFilePath)<<"\""<<std::endl;
   if (!spitfire::filesystem::FileExists(sXMLFilePath)) {
-    std::wcerr<<TEXT("XML File \"")<<sXMLFilePath<<TEXT("\" doesn't exist")<<std::endl;
+    LOGERROR<<TEXT("XML File \"")<<sXMLFilePath<<TEXT("\" doesn't exist")<<std::endl;
     return;
   }
+
+  spitfire::util::cProcessInterfaceVoid interface;
 
   spitfire::document::cDocument document;
 
@@ -1089,13 +1095,13 @@ void cConfig::Load()
     // Read the xml file
     spitfire::xml::reader reader;
 
-    reader.ReadFromFile(document, sXMLFilePath);
+    reader.ReadFromFile(interface, document, sXMLFilePath);
   }
 
   // Parse the xml file
   spitfire::document::cNode::iterator iterAccount(document);
   if (!iterAccount.IsValid()) {
-    std::wcerr<<TEXT("config.xml does not contain valid xml data")<<std::endl;
+    LOGERROR<<TEXT("config.xml does not contain valid xml data")<<std::endl;
     return;
   }
 
@@ -1105,24 +1111,24 @@ void cConfig::Load()
 
   iterAccount.FindChild("config");
   if (!iterAccount.IsValid()) {
-    std::wcerr<<TEXT("config.xml does not contain a config root node")<<std::endl;
+    LOGERROR<<TEXT("config.xml does not contain a config root node")<<std::endl;
     return;
   }
 
   iterAccount.FindChild("account");
   if (iterAccount.IsValid()) {
     if (!iterAccount.GetAttribute("host", sHostUTF8)) {
-      std::wcerr<<TEXT("config.xml contains an account without a host")<<std::endl;
+      LOGERROR<<TEXT("config.xml contains an account without a host")<<std::endl;
       return;
     }
 
     if (!iterAccount.GetAttribute("path", sPathUTF8)) {
-      std::wcerr<<TEXT("config.xml contains a project without a path")<<std::endl;
+      LOGERROR<<TEXT("config.xml contains a project without a path")<<std::endl;
       return;
     }
 
     if (!iterAccount.GetAttribute("secret", sSecretUTF8)) {
-      std::wcerr<<TEXT("config.xml contains a project without a secret")<<std::endl;
+      LOGERROR<<TEXT("config.xml contains a project without a secret")<<std::endl;
       return;
     }
   }
@@ -1238,7 +1244,7 @@ void cApplication::BuildAllProjects()
       request.SetMethodPost();
       request.SetHost(spitfire::string::ToString_t(config.GetHostUTF8()));
       request.SetPath(spitfire::string::ToString_t(config.GetPathUTF8()));
-      if (!config.GetSecretUTF8().empty()) request.AddValue("secret", config.GetSecretUTF8());
+      if (!config.GetSecretUTF8().empty()) request.AddFormData("secret", config.GetSecretUTF8());
       request.AddPostFileFromPath("file", sFilePath);
 
       spitfire::network::http::cHTTP http;
@@ -1246,8 +1252,6 @@ void cApplication::BuildAllProjects()
       bool bResult = http.IsSuccessful();
       std::cout<<"Result="<<bResult<<std::endl;
     }
-
-
   }
 }
 
